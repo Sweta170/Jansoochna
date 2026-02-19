@@ -1,0 +1,85 @@
+@startuml
+title JanSoochna ER Diagram
+
+entity "roles" as roles {
+  *id : INT
+  --
+  name : VARCHAR
+}
+
+entity "users" as users {
+  *id : INT
+  --
+  name : VARCHAR
+  email : VARCHAR
+  password_hash : VARCHAR
+  role_id : INT
+}
+
+entity "departments" as departments {
+  *id : INT
+  --
+  name : VARCHAR
+}
+
+entity "categories" as categories {
+  *id : INT
+  --
+  name : VARCHAR
+}
+
+entity "complaints" as complaints {
+  *id : INT
+  --
+  title : VARCHAR
+  description : TEXT
+  category_id : INT
+  reporter_id : INT
+  location : VARCHAR
+  status : ENUM
+  priority_score : FLOAT
+}
+
+entity "assignments" as assignments {
+  *id : INT
+  --
+  complaint_id : INT
+  department_id : INT
+  assigned_to : INT
+}
+
+entity "comments" as comments {
+  *id : INT
+  --
+  complaint_id : INT
+  author_id : INT
+  body : TEXT
+}
+
+entity "upvotes" as upvotes {
+  *id : INT
+  --
+  complaint_id : INT
+  user_id : INT
+}
+
+entity "ai_summaries" as ai_summaries {
+  *id : INT
+  --
+  complaint_id : INT
+  summary : TEXT
+}
+
+users }o--|| roles : "role_id"
+complaints }o--|| categories : "category_id"
+complaints }o--|| users : "reporter_id"
+assignments }o--|| complaints : "complaint_id"
+assignments }o--|| departments : "department_id"
+assignments }o--|| users : "assigned_to"
+comments }o--|| complaints : "complaint_id"
+comments }o--|| users : "author_id"
+upvotes }o--|| complaints : "complaint_id"
+upvotes }o--|| users : "user_id"
+ai_summaries }o--|| complaints : "complaint_id"
+
+@enduml

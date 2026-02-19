@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Lint frontend
+        working-directory: ./frontend
+        run: npx eslint --ext .js,.jsx src
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Lint backend
+        working-directory: ./backend
+        run: npx eslint . --ext .js
+
+      - name: Run backend checks
+        working-directory: ./backend
+        run: |
+          npm run lint
+          echo "No tests configured. Add tests here."
+
+      - name: Build backend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: false
+          tags: jansoochna/backend:${{ github.sha }}
+
+      - name: Build frontend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: false
+          tags: jansoochna/frontend:${{ github.sha }}
+
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist

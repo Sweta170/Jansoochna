@@ -1,0 +1,123 @@
+openapi: 3.0.0
+info:
+  title: JanSoochna API
+  version: 0.1.0
+servers:
+  - url: http://localhost:4000/api
+paths:
+  /auth/register:
+    post:
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '201':
+          description: Created
+
+  /auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Token
+
+  /complaints:
+    get:
+      summary: List complaints
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string }
+      responses:
+        '200':
+          description: array of complaints
+
+    post:
+      summary: Create complaint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                description: { type: string }
+                category: { type: string }
+      responses:
+        '201':
+          description: Created complaint
+
+  /complaints/{id}:
+    get:
+      summary: Get complaint
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: complaint
+
+  /complaints/{id}/comments:
+    post:
+      summary: Add comment to complaint
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body: { type: string }
+      responses:
+        '201':
+          description: comment created
+
+  /complaints/{id}/upvote:
+    post:
+      summary: Upvote complaint
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: upvote registered
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
