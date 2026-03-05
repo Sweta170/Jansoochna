@@ -35,4 +35,24 @@ router.put('/:id/read', authenticate, async (req, res) => {
     }
 });
 
+// GET /api/notifications/unread-count
+router.get('/unread-count', authenticate, async (req, res) => {
+    try {
+        const count = await Notification.count({ where: { user_id: req.user.id, is_read: false } });
+        res.json({ count });
+    } catch (err) {
+        res.status(500).json({ error: 'server error' });
+    }
+});
+
+// PUT /api/notifications/read-all — mark all as read
+router.put('/read-all', authenticate, async (req, res) => {
+    try {
+        await Notification.update({ is_read: true }, { where: { user_id: req.user.id, is_read: false } });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'server error' });
+    }
+});
+
 module.exports = router;

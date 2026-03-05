@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import './style.css'
+import './chatbot.css'
 
 import { BrowserRouter } from 'react-router-dom'
 

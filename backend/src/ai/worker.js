@@ -8,25 +8,7 @@ function simpleSummary(text, maxWords = 30) {
 
 const aiService = require('../utils/ai_service');
 
-function computePriority(text, upvotes) {
-  const { score: sentimentScore } = aiService.analyzeSentiment(text);
-
-  const keywords = ['urgent', 'danger', 'accident', 'fire', 'collapse', 'flood', 'injury', 'critical'];
-  const t = (text || '').toLowerCase();
-  let score = 0;
-  for (const k of keywords) {
-    const count = t.split(k).length - 1;
-    if (count > 0) score += count * 2;
-  }
-
-  // Add sentiment impact: Negative sentiment (urgency) increases priority
-  if (sentimentScore < 0) {
-    score += Math.abs(sentimentScore);
-  }
-
-  score += (upvotes || 0);
-  return score;
-}
+const { computePriority } = require('../utils/priority');
 
 function startAIWorker(io) {
   aiQueue.process('processComplaint', async (job, done) => {
@@ -42,13 +24,29 @@ function startAIWorker(io) {
       const upvoteCount = await models.Upvote.count({ where: { complaint_id: complaint.id } });
 
       const summary = simpleSummary(text, 40);
+
+      // Duplicate Detection
+      const dupCheck = await aiService.checkDuplicates(complaint.title, complaint.latitude, complaint.longitude);
+      if (dupCheck.isDuplicate && dupCheck.originalId !== complaint.id) {
+        complaint.is_duplicate = true;
+        complaint.parent_complaint_id = dupCheck.originalId;
+        console.log(`[AI WORKER] Flagged #${complaint.id} as duplicate of #${dupCheck.originalId}`);
+      }
+
+      // Sentiment & Priority
+      const sentiment = aiService.analyzeSentiment(text);
       const priority = computePriority(text, upvoteCount);
 
       // Save AI summary
-      await models.AISummary.create({ complaint_id: complaint.id, summary, model_version: 'mock-v1' });
+      await models.AISummary.create({
+        complaint_id: complaint.id,
+        summary,
+        model_version: 'smart-v1',
+        sentiment_score: sentiment.score
+      });
 
-      // Update complaint priority score
-      complaint.priority_score = priority;
+      // Update complaint details
+      complaint.priority_score = priority + (sentiment.score < 0 ? Math.abs(sentiment.score) : 0);
       await complaint.save();
 
       // Emit event

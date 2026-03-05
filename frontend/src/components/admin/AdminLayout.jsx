@@ -12,6 +12,7 @@ export default function AdminLayout() {
                 <h2>JanSoochna Admin</h2>
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <Link to="/admin" style={{ color: 'white', textDecoration: 'none' }}>Dashboard</Link>
+                    <Link to="/admin/insights" style={{ color: 'white', textDecoration: 'none' }}>Analytics</Link>
                     <Link to="/admin/categories" style={{ color: 'white', textDecoration: 'none' }}>Categories</Link>
                     <Link to="/admin/users" style={{ color: 'white', textDecoration: 'none' }}>Users</Link>
                     <hr style={{ width: '100%', borderColor: '#555' }} />

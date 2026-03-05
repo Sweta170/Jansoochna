@@ -9,7 +9,7 @@ export default function CategoryManager() {
 
     async function fetchCats() {
         try {
-            const res = await api.get('/admin/categories')
+            const res = await api.get('admin/categories')
             setCategories(res.data)
         } catch (err) {
             console.error(err)
@@ -20,7 +20,7 @@ export default function CategoryManager() {
         e.preventDefault()
         if (!newName) return
         try {
-            await api.post('/admin/categories', { name: newName, description: '' })
+            await api.post('admin/categories', { name: newName, description: '' })
             setNewName('')
             fetchCats()
         } catch (err) { alert('Failed to add') }

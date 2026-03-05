@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // Use relative API path so frontend can be served from the same origin (nginx will proxy /api)
-const api = axios.create({ baseURL: '/api' })
+const api = axios.create({ baseURL: '/api/' })
 
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token')

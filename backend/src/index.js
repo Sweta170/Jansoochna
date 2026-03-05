@@ -1,8 +1,11 @@
+console.log('[DEBUG INDEX] Starting...');
 require('dotenv').config();
+console.log('[DEBUG INDEX] Dotenv loaded');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -10,25 +13,77 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
+
+const { authenticate } = require('./middleware/auth');
+const authUploads = require('./middleware/auth_uploads');
+
+// Public access to uploads removed. Now requires token.
+app.use('/uploads', authenticate, authUploads, express.static('uploads'));
+
+console.log('[DEBUG INDEX] Middleware set up');
 
 // security middleware (helmet, rate limiter)
-try { require('./middleware/security')(app); } catch (e) { console.error('security middleware failed to load', e); }
+try {
+  console.log('[DEBUG INDEX] Loading security middleware...');
+  require('./middleware/security')(app);
+} catch (e) { console.error('security middleware failed to load', e); }
 
-// Models and auth
+console.log('[DEBUG INDEX] Loading models...');
 const models = require('./models');
-const authRoutes = require('./routes/auth');
-const { authenticate } = require('./middleware/auth');
 
-// Temporary in-memory fallback for complaints when DB not used
-const complaints = [];
-let nextId = 1;
+// register routes BEFORE listen
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
+const complaintsRoutes = require('./routes/complaints');
+app.use('/api/complaints', complaintsRoutes);
+
+const adminRoutes = require(path.join(__dirname, 'routes', 'admin'));
+app.use('/api/admin', adminRoutes);
+
+const authorityRoutes = require(path.join(__dirname, 'routes', 'authority.js'));
+app.use('/api/authority', authorityRoutes);
+
+const categoryRoutes = require('./routes/categories');
+app.use('/api/categories', categoryRoutes);
+
+const notificationRoutes = require('./routes/notifications');
+app.use('/api/notifications', notificationRoutes);
+
+const aiRoutes = require('./routes/ai');
+app.use('/api/ai', aiRoutes);
+
+const gamificationRoutes = require('./routes/gamification');
+app.use('/api/gamification', gamificationRoutes);
+
+const officialRoutes = require('./routes/official');
+app.use('/api/official', officialRoutes);
+
+const whatsappWebhook = require('./routes/webhooks/whatsapp');
+app.use('/api/webhooks/whatsapp', whatsappWebhook);
+
+const analyticsRoutes = require('./routes/analytics');
+app.use('/api/analytics', analyticsRoutes);
+
+const sharingRoutes = require('./routes/sharing');
+app.use('/share', sharingRoutes);
+
+const chatbotRoutes = require('./routes/chatbot');
+app.use('/api/chatbot', chatbotRoutes);
+
+const servicesRoutes = require('./routes/services');
+app.use('/api/services', servicesRoutes);
+
+const departmentsRoutes = require('./routes/departments');
+app.use('/api/departments', departmentsRoutes);
+
+const emergencyRoutes = require('./routes/emergency');
+app.use('/api/emergency', emergencyRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-app.use('/api/auth', authRoutes);
-
-// Temporary routes removed. Using DB routes below.
+// expose io to routes via app
+app.set('io', io);
 
 // Basic Socket.IO connection
 io.on('connection', (socket) => {
@@ -38,62 +93,58 @@ io.on('connection', (socket) => {
     socket.join(`complaint:${complaintId}`);
   });
 
+  socket.on('location:update', async ({ lat, lng }) => {
+    try {
+      const { Complaint } = require('./models');
+      const { Op } = require('sequelize');
+      const hazards = await Complaint.findAll({
+        where: {
+          status: 'open',
+          priority_score: { [Op.gt]: 10 },
+          latitude: { [Op.between]: [lat - 0.005, lat + 0.005] },
+          longitude: { [Op.between]: [lng - 0.005, lng + 0.005] }
+        }
+      });
+
+      if (hazards.length > 0) {
+        socket.emit('hazard:nearby', {
+          count: hazards.length,
+          primary: hazards[0].title,
+          coords: { lat: hazards[0].latitude, lng: hazards[0].longitude }
+        });
+      }
+    } catch (e) {
+      console.error('Socket location error', e);
+    }
+  });
+
   socket.on('disconnect', () => { });
 });
 
-// expose io to routes via app
-app.set('io', io);
-
-// Routes
-const complaintsRoutes = require('./routes/complaints');
-app.use('/api/complaints', complaintsRoutes);
-
 const PORT = process.env.PORT || 4000;
+
+// Initialize SLA Escalation Service
+try {
+  const { initSLAService } = require('./services/SLAService');
+  initSLAService(io);
+} catch (e) { console.error('SLA Service failed to start', e); }
 
 // Sync DB and start server
 async function seedRoles() {
   try {
-    const names = ['admin', 'authority', 'citizen'];
+    const names = ['admin', 'authority', 'citizen', 'official'];
     for (const n of names) {
-      const [r] = await models.Role.findOrCreate({ where: { name: n }, defaults: { name: n } });
+      await models.Role.findOrCreate({ where: { name: n }, defaults: { name: n } });
     }
     console.log('Default roles ensured');
   } catch (err) { console.error('Failed seeding roles', err); }
 }
 
-models.sequelize.sync({ alter: false }).then(async () => {
+const isSQLite = models.sequelize.getDialect() === 'sqlite';
+models.sequelize.sync({ alter: !isSQLite }).then(async () => {
   await seedRoles();
-  server.listen(PORT, () => console.log(`Backend listening on ${PORT}`));
-  // start AI worker in same process (for now)
-  try {
-    const startAIWorker = require('./ai/worker');
-    startAIWorker(io);
-  } catch (e) { console.error('Failed to start AI worker', e); }
+  server.listen(PORT, '0.0.0.0', () => console.log(`Backend listening on ${PORT}`));
 }).catch(err => {
   console.error('Failed to sync DB', err);
-  server.listen(PORT, () => console.log(`Backend listening on ${PORT} (DB sync failed)`));
+  server.listen(PORT, '0.0.0.0', () => console.log(`Backend listening on ${PORT} (DB sync failed)`));
 });
-
-// register authority routes
-const authorityRoutes = require('./routes/authority');
-app.use('/api/authority', authorityRoutes);
-
-// register admin routes
-const adminRoutes = require('./routes/admin');
-app.use('/api/admin', adminRoutes);
-
-// register public category routes
-const categoryRoutes = require('./routes/categories');
-app.use('/api/categories', categoryRoutes);
-
-// register notification routes
-const notificationRoutes = require('./routes/notifications');
-app.use('/api/notifications', notificationRoutes);
-
-// register AI routes
-const aiRoutes = require('./routes/ai');
-app.use('/api/ai', aiRoutes);
-
-// register Gamification routes
-const gamificationRoutes = require('./routes/gamification');
-app.use('/api/gamification', gamificationRoutes);

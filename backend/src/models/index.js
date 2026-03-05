@@ -1,6 +1,7 @@
 const sequelize = require('../config/database');
 const { DataTypes } = require('sequelize');
 
+// Import model factories
 const RoleModel = require('./role');
 const UserModel = require('./user');
 const CategoryModel = require('./category');
@@ -10,7 +11,11 @@ const UpvoteModel = require('./upvote');
 const AssignmentModel = require('./assignment');
 const AISummaryModel = require('./ai_summary');
 const NotificationModel = require('./notification');
+const DepartmentModel = require('./department');
+const ServiceApplicationModel = require('./service_application');
+const EmergencyLogModel = require('./emergency_log');
 
+// Initialize models
 const Role = RoleModel(sequelize, DataTypes);
 const User = UserModel(sequelize, DataTypes);
 const Category = CategoryModel(sequelize, DataTypes);
@@ -20,18 +25,12 @@ const Upvote = UpvoteModel(sequelize, DataTypes);
 const Assignment = AssignmentModel(sequelize, DataTypes);
 const AISummary = AISummaryModel(sequelize, DataTypes);
 const Notification = NotificationModel(sequelize, DataTypes);
+const Department = DepartmentModel(sequelize, DataTypes);
+const ServiceApplication = ServiceApplicationModel(sequelize, DataTypes);
+const EmergencyLog = EmergencyLogModel(sequelize, DataTypes);
 
-// Setup associations
-if (typeof User.associate === 'function') User.associate({ Role });
-if (typeof Complaint.associate === 'function') Complaint.associate({ Category, User, Comment, Upvote, AISummary });
-if (typeof Comment.associate === 'function') Comment.associate({ Complaint, User });
-if (typeof Upvote.associate === 'function') Upvote.associate({ Complaint, User });
-if (typeof Assignment.associate === 'function') Assignment.associate({ Complaint });
-if (typeof AISummary.associate === 'function') AISummary.associate({ Complaint });
-if (typeof Notification.associate === 'function') Notification.associate({ User, Complaint });
-
-module.exports = {
-  sequelize,
+// Group for associations
+const models = {
   Role,
   User,
   Category,
@@ -40,5 +39,20 @@ module.exports = {
   Upvote,
   Assignment,
   AISummary,
-  Notification
+  Notification,
+  Department,
+  ServiceApplication,
+  EmergencyLog
+};
+
+// Setup associations
+Object.keys(models).forEach(modelName => {
+  if (models[modelName].associate) {
+    models[modelName].associate(models);
+  }
+});
+
+module.exports = {
+  sequelize,
+  ...models
 };

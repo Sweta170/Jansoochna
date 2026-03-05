@@ -1,7 +1,7 @@
 const natural = require('natural');
 const Sentiment = require('sentiment');
 const levenshtein = require('fast-levenshtein');
-const models = require('../models');
+const models = require('../models/index');
 
 const sentiment = new Sentiment();
 const classifier = new natural.BayesClassifier();
@@ -29,47 +29,60 @@ const aiService = {
 
     analyzeSentiment: (text) => {
         const result = sentiment.analyze(text);
-        // Score < 0 means negative (urgent/angry), > 0 positive
-        // We enhance priority if score is very negative
+        // We enhance score based on presence of urgent keywords
+        const urgentKeywords = ['danger', 'accident', 'fire', 'emergency', 'help', 'bloody', 'collapse', 'deadly'];
+        let keywordBoost = 0;
+        const lowText = text.toLowerCase();
+        urgentKeywords.forEach(k => {
+            if (lowText.includes(k)) keywordBoost -= 3;
+        });
+
+        const finalScore = result.score + keywordBoost;
         let urgency = 'normal';
-        if (result.score < -2) urgency = 'high';
-        if (result.score < -5) urgency = 'critical';
-        return { score: result.score, urgency };
+        if (finalScore < -2) urgency = 'high';
+        if (finalScore < -6) urgency = 'critical';
+        return { score: finalScore, urgency, tokens: result.tokens };
     },
 
     checkDuplicates: async (title, lat, lng) => {
-        // 1. Text Similarity (Levenshtein)
-        // Fetch recent open complaints
-        const recentComplaints = await models.Complaint.findAll({
-            where: { status: ['open', 'in_progress'] },
-            limit: 50,
-            order: [['created_at', 'DESC']]
+        const { Complaint } = require('../models');
+        const { Op } = require('sequelize');
+
+        // Fetch recent complaints within 1km and 7 days
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const recentComplaints = await Complaint.findAll({
+            where: {
+                status: ['open', 'in_progress'],
+                created_at: { [Op.gte]: sevenDaysAgo }
+            },
+            limit: 100
         });
 
-        const duplicates = [];
-
         for (const c of recentComplaints) {
+            // 1. Precise Text Similarity
             const distance = levenshtein.get(title.toLowerCase(), c.title.toLowerCase());
             const similarity = 1 - (distance / Math.max(title.length, c.title.length));
 
+            // 2. Geospatial Proximity (Approx 500m)
             let isGeoMatch = false;
             if (lat && lng && c.latitude && c.longitude) {
-                // Simple Euclidean distance for MVP (approx 0.001 deg ~ 111m)
                 const geoDist = Math.sqrt(Math.pow(lat - c.latitude, 2) + Math.pow(lng - c.longitude, 2));
-                if (geoDist < 0.001) isGeoMatch = true;
+                if (geoDist < 0.005) isGeoMatch = true;
             }
 
-            // If text is > 80% similar OR (> 50% similar AND close location)
-            if (similarity > 0.8 || (similarity > 0.5 && isGeoMatch)) {
-                duplicates.push({
-                    id: c.id,
-                    title: c.title,
-                    similarity: Math.round(similarity * 100),
+            // High similarity OR (Moderate similarity AND geo match)
+            if (similarity > 0.85 || (similarity > 0.6 && isGeoMatch)) {
+                return {
+                    isDuplicate: true,
+                    originalId: c.id,
+                    similarityScore: Math.round(similarity * 100),
                     isGeoMatch
-                });
+                };
             }
         }
-        return duplicates;
+        return { isDuplicate: false };
     }
 };
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function PasswordInput({ value, onChange, placeholder = "Password", name = "password" }) {
     const [show, setShow] = useState(false)
@@ -11,7 +12,7 @@ export default function PasswordInput({ value, onChange, placeholder = "Password
                 onChange={onChange}
                 name={name}
                 placeholder={placeholder}
-                style={{ width: '100%', paddingRight: '40px' }}
+                style={{ width: '100%', paddingRight: '48px' }}
                 required
             />
             <button
@@ -19,20 +20,21 @@ export default function PasswordInput({ value, onChange, placeholder = "Password
                 onClick={() => setShow(!show)}
                 style={{
                     position: 'absolute',
-                    right: '5px',
+                    right: '12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    fontSize: '1.2em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     padding: '0',
-                    lineHeight: '1',
-                    color: '#777'
+                    color: '#94a3b8'
                 }}
                 tabIndex="-1"
             >
-                {show ? '🙈' : '👁️'}
+                {show ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
         </div>
     )

@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../../services/api'
+import {
+    FileText, AlertCircle, Hammer, CheckCircle2,
+    Clock, BarChart3, Flame
+} from 'lucide-react'
 
 export default function AdminDashboard() {
     const [metrics, setMetrics] = useState(null)
@@ -11,8 +16,8 @@ export default function AdminDashboard() {
         async function fetchData() {
             try {
                 const [metricsRes, complaintsRes] = await Promise.all([
-                    api.get('/admin/metrics'),
-                    api.get('/complaints?status=open')
+                    api.get('admin/metrics'),
+                    api.get('complaints?status=open')
                 ]);
                 setMetrics(metricsRes.data);
                 setComplaints(complaintsRes.data);
@@ -34,18 +39,23 @@ export default function AdminDashboard() {
     )
 
     const cards = [
-        { label: 'Total Complaints', value: metrics.total, color: 'var(--primary)', icon: '📝' },
-        { label: 'Open Issues', value: metrics.open, color: 'var(--danger)', icon: '🚨' },
-        { label: 'In Progress', value: metrics.inProgress, color: 'var(--warning)', icon: '🚧' },
-        { label: 'Resolved', value: metrics.resolved, color: 'var(--success)', icon: '✅' },
-        { label: 'Avg Resolution Time', value: metrics.avgResolutionHours ? `${metrics.avgResolutionHours.toFixed(1)} hrs` : '—', color: '#8B5CF6', icon: '⏱️' },
+        { label: 'Total Complaints', value: metrics.total, color: 'var(--primary)', icon: <FileText size={24} /> },
+        { label: 'Open Issues', value: metrics.open, color: 'var(--danger)', icon: <AlertCircle size={24} /> },
+        { label: 'In Progress', value: metrics.inProgress, color: 'var(--warning)', icon: <Hammer size={24} /> },
+        { label: 'Resolved', value: metrics.resolved, color: 'var(--success)', icon: <CheckCircle2 size={24} /> },
+        { label: 'Avg Resolution Time', value: metrics.avgResolutionHours ? `${metrics.avgResolutionHours.toFixed(1)} hrs` : '—', color: '#8B5CF6', icon: <Clock size={24} /> },
     ]
 
     return (
         <div>
-            <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Admin Dashboard</h1>
-                <p className="text-muted">Overview of platform activity and performance.</p>
+            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Admin Dashboard</h1>
+                    <p className="text-muted">Overview of platform activity and performance.</p>
+                </div>
+                <Link to="/admin/insights" className="btn btn-outline" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <BarChart3 size={18} /> View Full Insights
+                </Link>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
@@ -67,7 +77,9 @@ export default function AdminDashboard() {
             </div>
 
             <div style={{ marginTop: '3rem' }}>
-                <h2 style={{ marginBottom: '1rem' }}>🔥 High Priority & Urgent Issues</h2>
+                <h2 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Flame size={24} color="var(--danger)" /> High Priority & Urgent Issues
+                </h2>
                 <div style={{ display: 'grid', gap: '1rem' }}>
                     {complaints.filter(c => c.priority_score > 0).slice(0, 5).map(c => (
                         <div key={c.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: c.priority_score > 10 ? '5px solid var(--danger)' : '5px solid var(--warning)' }}>

@@ -3,7 +3,8 @@ module.exports = (sequelize, DataTypes) => {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     complaint_id: { type: DataTypes.INTEGER, allowNull: false },
     summary: { type: DataTypes.TEXT },
-    model_version: { type: DataTypes.STRING }
+    model_version: { type: DataTypes.STRING },
+    sentiment_score: { type: DataTypes.FLOAT, allowNull: true }
   }, {
     tableName: 'ai_summaries',
     timestamps: false
