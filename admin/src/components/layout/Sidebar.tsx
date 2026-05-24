@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAdmin } from '../../context/AuthContext';
 import { 
@@ -5,13 +6,30 @@ import {
   MessageSquare, ShieldCheck, BarChart3, Settings, Shield
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { api } from '../../services/api';
 
 export default function Sidebar({ collapsed }: { collapsed: boolean }) {
   const { admin, can } = useAdmin();
+  const [openIssuesCount, setOpenIssuesCount] = useState(0);
+
+  useEffect(() => {
+    const fetchOpenIssuesCount = async () => {
+      try {
+        const res = await api.get('/admin/stats/overview');
+        setOpenIssuesCount(res.data.openIssues || 0);
+      } catch (err) {
+        console.error('Failed to fetch open issues count for sidebar:', err);
+      }
+    };
+    
+    fetchOpenIssuesCount();
+    const interval = setInterval(fetchOpenIssuesCount, 60000); // refresh every minute
+    return () => clearInterval(interval);
+  }, []);
 
   const links = [
     { name: 'Overview', to: '/', icon: LayoutDashboard },
-    { name: 'Issues', to: '/issues', icon: AlertTriangle, badge: 12 },
+    { name: 'Issues', to: '/issues', icon: AlertTriangle, badge: openIssuesCount > 0 ? openIssuesCount : undefined },
     { name: 'Map View', to: '/map', icon: MapIcon },
     { name: 'Citizens', to: '/citizens', icon: Users, permission: 'citizens.view' },
     { name: 'Posts', to: '/posts', icon: MessageSquare, permission: 'posts.moderate' },
