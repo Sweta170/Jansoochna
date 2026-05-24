@@ -1,4 +1,6 @@
-import { Search, Ban, BellRing, MoreVertical } from 'lucide-react';
+import { useState } from 'react';
+import { Search, Ban, BellRing, MoreVertical, Lock, Unlock } from 'lucide-react';
+import { api } from '../services/api';
 
 const MOCK_CITIZENS = Array.from({ length: 15 }).map((_, i) => ({
   id: `USR${i}98`,
@@ -8,11 +10,26 @@ const MOCK_CITIZENS = Array.from({ length: 15 }).map((_, i) => ({
   points: Math.floor(Math.random() * 500),
   badge: ['Sewak', 'Jan Nayak', 'Pratinidhi'][i % 3],
   issuesCount: Math.floor(Math.random() * 10),
-  status: i % 7 === 0 ? 'blocked' : 'active',
+  status: i % 7 === 0 ? 'blocked' : (i % 5 === 0 ? 'locked' : 'active'),
   joinedAt: new Date(Date.now() - Math.random() * 10000000000).toLocaleDateString(),
 }));
 
 export default function Citizens() {
+  const [citizens, setCitizens] = useState(MOCK_CITIZENS);
+
+  const handleUnlock = async (id: string, name: string) => {
+    try {
+      const res = await api.patch(`/admin/users/${id}/unlock`);
+      alert(res.data.message || `Unlocked ${name}`);
+      // Update local state to show 'active' instead of 'locked'
+      setCitizens(prev =>
+        prev.map(c => c.id === id ? { ...c, status: 'active' } : c)
+      );
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.response?.data?.error || 'Failed to unlock citizen');
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
@@ -41,7 +58,7 @@ export default function Citizens() {
               </tr>
             </thead>
             <tbody>
-              {MOCK_CITIZENS.map((c, i) => (
+              {citizens.map((c, i) => (
                 <tr key={i} className={`border-b border-border/50 hover:bg-secondary/60 transition-colors ${c.status === 'blocked' ? 'bg-destructive/5' : ''}`}>
                   <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
                   <td className="px-4 py-3 text-muted-foreground font-mono">{c.phone}</td>
@@ -53,16 +70,33 @@ export default function Citizens() {
                   <td className="px-4 py-3 text-muted-foreground">{c.issuesCount}</td>
                   <td className="px-4 py-3 text-muted-foreground">{c.joinedAt}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${c.status === 'active' ? 'bg-jade-lt text-jade' : 'bg-crimson-lt text-crimson'}`}>
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 w-fit ${
+                      c.status === 'active' 
+                        ? 'bg-jade-lt text-jade' 
+                        : (c.status === 'locked' ? 'bg-amber-lt text-amber border border-amber/15' : 'bg-crimson-lt text-crimson')
+                    }`}>
+                      {c.status === 'locked' && <Lock size={12} />}
                       {c.status.toUpperCase()}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <button className="p-1 hover:text-primary transition-colors" title="Send Notification"><BellRing size={16} /></button>
-                      <button className={`p-1 transition-colors ${c.status === 'blocked' ? 'text-jade hover:text-jade/80' : 'hover:text-destructive'}`} title={c.status === 'blocked' ? 'Unblock' : 'Block'}>
-                        <Ban size={16} />
-                      </button>
+                      
+                      {c.status === 'locked' ? (
+                        <button 
+                          onClick={() => handleUnlock(c.id, c.name)}
+                          className="p-1 text-amber hover:text-amber/80 transition-colors" 
+                          title="Unlock User"
+                        >
+                          <Unlock size={16} />
+                        </button>
+                      ) : (
+                        <button className={`p-1 transition-colors ${c.status === 'blocked' ? 'text-jade hover:text-jade/80' : 'hover:text-destructive'}`} title={c.status === 'blocked' ? 'Unblock' : 'Block'}>
+                          <Ban size={16} />
+                        </button>
+                      )}
+                      
                       <button className="p-1 hover:text-foreground transition-colors"><MoreVertical size={16} /></button>
                     </div>
                   </td>

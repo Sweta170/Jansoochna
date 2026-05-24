@@ -23,6 +23,27 @@ const UserSchema = new mongoose.Schema({
   badge:      { type: String, default: 'Nagarik' },  // Nagarik → Sewak → Jan Nayak → Pratinidhi
   otp:        { type: String },
   otpExpiry:  { type: Date },
+
+  // OTP lockout fields
+  otpAttempts: {
+    type: Number,
+    default: 0,
+  },
+  otpLockedUntil: {
+    type: Date,
+    default: null,
+  },
+  otpLockCount: {
+    type: Number,
+    default: 0,
+  },
+  lastOtpRequest: {
+    type: Date,
+    default: null,
+  },
 }, { timestamps: true })
+
+UserSchema.index({ phone: 1 })
+UserSchema.index({ otpLockedUntil: 1 }, { sparse: true })
 
 module.exports = mongoose.model('User', UserSchema)

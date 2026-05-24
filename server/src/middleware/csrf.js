@@ -1,0 +1,37 @@
+const { doubleCsrf } = require('csrf-csrf')
+
+const {
+  generateCsrfToken: generateToken,
+  doubleCsrfProtection: _doubleCsrfProtection,
+} = doubleCsrf({
+  getSecret: () => process.env.CSRF_SECRET,
+  cookieName: 'csrf_token',
+  cookieOptions: {
+    httpOnly: false, // MUST be false — client JS needs to read this cookie
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 24, // 24 hours
+  },
+  size: 64, // token size in bytes
+  getTokenFromRequest: (req) => req.headers['x-csrf-token'] || req.body?._csrf,
+  getSessionIdentifier: (req) => req.cookies?.refreshToken || 'anonymous',
+})
+
+// Wrapper that skips CSRF for mobile app / admin (Bearer token auth) and safe methods
+function csrfProtection(req, res, next) {
+  // Skip CSRF for:
+  // 1. Mobile app & admin requests (use Bearer token, not cookies)
+  // 2. GET, HEAD, OPTIONS (read-only, safe methods)
+  const authHeader = req.headers['authorization']
+  const isMobileAppOrAdmin = authHeader && authHeader.startsWith('Bearer ')
+  const isSafeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+
+  if (isMobileAppOrAdmin || isSafeMethod) {
+    return next()
+  }
+
+  return _doubleCsrfProtection(req, res, next)
+}
+
+module.exports = { generateToken, csrfProtection }

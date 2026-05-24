@@ -20,6 +20,10 @@ const baseURL = getBaseURL()
 
 export const api = axios.create({
   baseURL,
+  // Note: Mobile app uses Bearer token auth (Authorization header), not cookies.
+  // CSRF attacks require cookie-based session auth to exploit browser state.
+  // The server's csrfProtection middleware automatically skips the CSRF token check
+  // for all requests sending an Authorization header starting with 'Bearer '.
   headers: {
     'Content-Type': 'application/json'
   }

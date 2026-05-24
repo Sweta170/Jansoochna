@@ -2,6 +2,13 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const User = require('../models/User')
 const { sendOTPEmail } = require('../utils/emailTransporter')
+const {
+  checkLockStatus,
+  recordFailedAttempt,
+  clearLockout,
+  resetAttemptCounter,
+  getLockoutMessage,
+} = require('../utils/otpLockout')
 
 // Generate 6-digit OTP
 function generateOTP() {
@@ -96,6 +103,28 @@ exports.sendOTP = async (req, res) => {
     const existingUser = await User.findOne({ email: email.toLowerCase() })
 
     if (existingUser) {
+      // ── LOCKOUT CHECK ─────────────────────────────────
+      const lockStatus = checkLockStatus(existingUser)
+
+      if (lockStatus.locked) {
+        const msg = getLockoutMessage(
+          lockStatus.minutesLeft,
+          lockStatus.isHardLock
+        )
+        return res.status(429).json({
+          message: msg.hi,
+          messageEn: msg.en,
+          error: msg.hi, // compatibility fallback
+          code: msg.code,
+          minutesLeft: lockStatus.minutesLeft,
+          isHardLock: lockStatus.isHardLock,
+        })
+      }
+
+      // Reset attempt counter for new OTP request
+      await resetAttemptCounter(existingUser)
+      // ─────────────────────────────────────────────────
+
       existingUser.otp = hashedOTP
       existingUser.otpExpiry = otpExpiry
       if (phone) existingUser.phone = phone
@@ -149,20 +178,81 @@ exports.verifyOTP = async (req, res) => {
       return res.status(400).json({ error: 'User nahi mila. Pehle OTP bhejein.' })
     }
 
-    // Check expiry
-    if (!user.otpExpiry || user.otpExpiry < new Date()) {
-      return res.status(400).json({ error: 'OTP expired. Naya OTP bhejein.' })
+    // ── LOCKOUT CHECK ─────────────────────────────────
+    const lockStatus = checkLockStatus(user)
+
+    if (lockStatus.locked) {
+      const msg = getLockoutMessage(
+        lockStatus.minutesLeft,
+        lockStatus.isHardLock
+      )
+      return res.status(429).json({
+        message: msg.hi,
+        messageEn: msg.en,
+        error: msg.hi, // compatibility fallback
+        code: msg.code,
+        minutesLeft: lockStatus.minutesLeft,
+        isHardLock: lockStatus.isHardLock,
+      })
+    }
+    // ─────────────────────────────────────────────────
+
+    // OTP not requested
+    if (!user.otp || !user.otpExpiry) {
+      return res.status(400).json({
+        message: 'Pehle OTP mangaein.',
+        messageEn: 'Please request an OTP first.',
+        error: 'Pehle OTP mangaein.', // compatibility fallback
+      })
     }
 
-    // Verify OTP
+    // OTP expired
+    if (new Date() > user.otpExpiry) {
+      return res.status(400).json({
+        message: 'OTP expire ho gaya. Dobara bhejein.',
+        messageEn: 'OTP has expired. Please request a new one.',
+        error: 'OTP expire ho gaya. Dobara bhejein.', // compatibility fallback
+        code: 'OTP_EXPIRED',
+      })
+    }
+
+    // ── VERIFY OTP ────────────────────────────────────
     const isValid = await bcrypt.compare(otp, user.otp)
-    if (!isValid) {
-      return res.status(400).json({ error: 'Galat OTP. Dobara try karein.' })
-    }
 
-    // Clear OTP
-    user.otp = undefined
-    user.otpExpiry = undefined
+    if (!isValid) {
+      // Record failed attempt — may trigger lockout
+      const lockResult = await recordFailedAttempt(user)
+
+      if (lockResult.justLocked) {
+        const msg = getLockoutMessage(
+          lockResult.isHardLock ? lockResult.lockDuration : lockResult.lockDuration,
+          lockResult.isHardLock
+        )
+        return res.status(429).json({
+          message: msg.hi,
+          messageEn: msg.en,
+          error: msg.hi, // compatibility fallback
+          code: msg.code,
+          minutesLeft: lockResult.lockDuration,
+          isHardLock: lockResult.isHardLock,
+          lockCount: lockResult.lockCount,
+        })
+      }
+
+      // Not locked yet — show attempts remaining
+      const msg = getLockoutMessage(0, false, lockResult.attemptsLeft)
+      return res.status(400).json({
+        message: msg.hi,
+        messageEn: msg.en,
+        error: msg.hi, // compatibility fallback
+        code: msg.code,
+        attemptsLeft: lockResult.attemptsLeft,
+      })
+    }
+    // ─────────────────────────────────────────────────
+
+    // ✅ OTP is valid — clear all lockout data
+    await clearLockout(user)
 
     // If new user (placeholder pincode), require name + pincode
     if (user.pincode === '000000') {

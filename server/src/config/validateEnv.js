@@ -8,6 +8,7 @@ function validateEnv() {
     'MONGO_URI',
     'JWT_ACCESS_SECRET',
     'JWT_REFRESH_SECRET',
+    'CSRF_SECRET',
     'CLIENT_URL',
   ]
 

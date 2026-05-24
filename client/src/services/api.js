@@ -5,16 +5,49 @@ const api = axios.create({
   withCredentials: true, // Send cookies for refresh token
 })
 
-// Request interceptor: attach access token from memory
-api.interceptors.request.use(config => {
+// ── CSRF token management ──────────────────────────────────
+let csrfToken = null
+
+export async function fetchCsrfToken() {
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+    const { data } = await axios.get(
+      `${apiUrl}/csrf-token`,
+      { withCredentials: true }
+    )
+    csrfToken = data.csrfToken
+    return csrfToken
+  } catch (err) {
+    console.error('[CSRF] Failed to fetch token:', err.message)
+    return null
+  }
+}
+
+// Fetch CSRF token immediately on module load
+fetchCsrfToken()
+
+// Request interceptor: attach access token and CSRF token
+api.interceptors.request.use(async (config) => {
   const token = window.__JAN_ACCESS_TOKEN__
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
-  return config
-})
 
-// Response interceptor: on 401, refresh token and retry once
+  // Attach CSRF token to all mutating requests
+  const mutatingMethods = ['post', 'put', 'patch', 'delete']
+  if (mutatingMethods.includes(config.method?.toLowerCase())) {
+    if (!csrfToken) {
+      csrfToken = await fetchCsrfToken()
+    }
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken
+    }
+  }
+
+  return config
+}, (error) => Promise.reject(error))
+
+// Response interceptor: on 401 or 403 CSRF, refresh and retry
 let isRefreshing = false
 let failedQueue = []
 
@@ -34,6 +67,19 @@ api.interceptors.response.use(
   async err => {
     const originalRequest = err.config
 
+    // Handle 403 CSRF error — refresh token and retry once
+    if (err.response?.status === 403 &&
+        err.response?.data?.code === 'CSRF_ERROR' &&
+        !originalRequest._csrfRetry) {
+      originalRequest._csrfRetry = true
+      csrfToken = await fetchCsrfToken()
+      if (csrfToken) {
+        originalRequest.headers['X-CSRF-Token'] = csrfToken
+        return api(originalRequest)
+      }
+    }
+
+    // Handle 401 — refresh JWT and retry
     if (err.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -51,7 +97,22 @@ api.interceptors.response.use(
 
       try {
         const refreshUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/refresh`
-        const { data } = await axios.post(refreshUrl, {}, { withCredentials: true })
+        
+        // Ensure we have a CSRF token before calling raw axios
+        if (!csrfToken) {
+          csrfToken = await fetchCsrfToken()
+        }
+
+        const { data } = await axios.post(
+          refreshUrl,
+          {},
+          {
+            withCredentials: true,
+            headers: {
+              'X-CSRF-Token': csrfToken || ''
+            }
+          }
+        )
         
         window.__JAN_ACCESS_TOKEN__ = data.accessToken
         processQueue(null, data.accessToken)

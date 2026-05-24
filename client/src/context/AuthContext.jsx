@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react'
-import axios from 'axios'
+import api from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -9,14 +9,12 @@ export const AuthProvider = ({ children }) => {
 
   const refreshAccessToken = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-      const { data } = await axios.post(`${apiUrl}/auth/refresh`, {}, { withCredentials: true })
+      // Set _retry: true to bypass the interceptor's auto-refresh logic and prevent loops
+      const { data } = await api.post('/auth/refresh', {}, { _retry: true })
       window.__JAN_ACCESS_TOKEN__ = data.accessToken
       
       // Get current user details
-      const response = await axios.get(`${apiUrl}/user/me`, {
-        headers: { Authorization: `Bearer ${data.accessToken}` }
-      })
+      const response = await api.get('/user/me')
       
       setUser(response.data.user)
       return data.accessToken
@@ -44,8 +42,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-      await axios.post(`${apiUrl}/auth/logout`, {}, { withCredentials: true })
+      await api.post('/auth/logout')
     } catch (err) {
       console.error('Logout error:', err)
     } finally {

@@ -9,6 +9,7 @@ const cors = require('cors')
 const cookieParser = require('cookie-parser')
 const helmet = require('helmet')
 const connectDB = require('./config/db')
+const { csrfProtection, generateToken } = require('./middleware/csrf')
 const rateLimit = require('express-rate-limit')
 
 // Start the background Bull worker
@@ -20,7 +21,13 @@ const server = http.createServer(app)
 // Connect to MongoDB
 connectDB()
 
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:8081', process.env.CLIENT_URL].filter(Boolean);
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:8081',
+  process.env.CLIENT_URL,
+  process.env.ADMIN_URL
+].filter(Boolean);
 
 // Setup Socket.io
 const io = new Server(server, {
@@ -37,13 +44,40 @@ app.use(helmet({
 }))
 
 app.use(cors({
-  origin: allowedOrigins,
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true)
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      console.warn('[CORS] Blocked origin:', origin)
+      callback(new Error(`CORS: Origin ${origin} not allowed`))
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-CSRF-Token', // Allow CSRF token header
+  ],
+  exposedHeaders: ['X-New-Access-Token'],
 }))
 
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
+
+// CSRF token endpoint — called by client on app load
+// Must be GET (read-only) so it's exempt from CSRF check
+app.get('/api/csrf-token', (req, res) => {
+  const token = generateToken(req, res)
+  res.json({ csrfToken: token })
+})
+
+// CSRF protection middleware on all mutating routes
+app.use(csrfProtection)
 
 // Attach io to req
 app.use((req, res, next) => {
@@ -111,6 +145,18 @@ io.on('connection', (socket) => {
       console.log(`🔌 Client disconnected: ${socket.id}`)
     }
   })
+})
+
+// CSRF error handler — must be before general error handler
+app.use((err, req, res, next) => {
+  if (err.code === 'EBADCSRFTOKEN' || err.message === 'invalid csrf token') {
+    console.warn('[CSRF] Invalid token from:', req.ip, req.path)
+    return res.status(403).json({
+      message: 'Session expired. Please refresh the page and try again.',
+      code: 'CSRF_ERROR',
+    })
+  }
+  next(err)
 })
 
 // Global Error Handler

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import axios from 'axios'
+import api from '../services/api'
 import { Mail, Smartphone, Lock, User, MapPin, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { scaleIn, slideUp, fadeIn } from '../lib/motionVariants'
@@ -20,6 +21,26 @@ const SignIn = () => {
   const [district, setDistrict] = useState('')
   const [stateName, setStateName] = useState('')
   const [pincodeLoading, setPincodeLoading] = useState(false)
+  const [lockoutState, setLockoutState] = useState(null)
+
+  // Lockout countdown timer:
+  useEffect(() => {
+    if (!lockoutState?.locked || !lockoutState.minutesLeft) return
+
+    const timer = setInterval(() => {
+      setLockoutState(prev => {
+        if (!prev) return null
+        const newMinutes = prev.minutesLeft - 1
+        if (newMinutes <= 0) {
+          clearInterval(timer)
+          return null  // unlock
+        }
+        return { ...prev, minutesLeft: newMinutes }
+      })
+    }, 60000)  // update every minute
+
+    return () => clearInterval(timer)
+  }, [lockoutState?.locked, lockoutState?.minutesLeft])
   const [pincodeError, setPincodeError] = useState('')
   const [wardFocused, setWardFocused] = useState(false)
   const [districtFocused, setDistrictFocused] = useState(false)
@@ -33,8 +54,7 @@ const SignIn = () => {
     if (cleanVal.length === 6 && /^\d{6}$/.test(cleanVal)) {
       setPincodeLoading(true)
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-        const res = await axios.get(`${apiUrl}/auth/lookup-pincode?pincode=${cleanVal}`)
+        const res = await api.get(`/auth/lookup-pincode?pincode=${cleanVal}`)
         setStateName(res.data.state || '')
         setDistrict(res.data.district || '')
         setCity(res.data.city || '')
@@ -68,6 +88,14 @@ const SignIn = () => {
   const otpRefs = useRef([])
 
   useEffect(() => {
+    // Pre-fetch CSRF token when login page loads
+    // This ensures the CSRF cookie is set before user submits
+    axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/csrf-token`, {
+      withCredentials: true
+    }).catch(() => {})  // silent — will retry on form submit
+  }, [])
+
+  useEffect(() => {
     // Focus first OTP field when step transitions to 2
     if (step === 2 && otpRefs.current[0]) {
       setTimeout(() => otpRefs.current[0].focus(), 100)
@@ -85,8 +113,7 @@ const SignIn = () => {
     setLoading(true)
     
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-      const response = await axios.post(`${apiUrl}/auth/send-otp`, { email })
+      const response = await api.post('/auth/send-otp', { email })
       
       setIsNewUser(response.data.isNewUser)
       setStep(2)
@@ -100,7 +127,20 @@ const SignIn = () => {
       }
     } catch (err) {
       console.error(err)
-      setError(err.response?.data?.error || 'OTP bhejne mein dikkat aayi. Kripya dobara try karein.')
+      const data = err.response?.data
+      const status = err.response?.status
+      if (status === 429) {
+        setLockoutState({
+          locked: true,
+          minutesLeft: data.minutesLeft,
+          isHardLock: data.isHardLock,
+          message: data.message || 'Too many failed attempts.',
+        })
+        setStep(2) // Move to step 2 so we show the lockout screen
+        setError('')
+      } else {
+        setError(err.response?.data?.error || err.response?.data?.message || 'OTP bhejne mein dikkat aayi. Kripya dobara try karein.')
+      }
     } finally {
       setLoading(false)
     }
@@ -124,8 +164,7 @@ const SignIn = () => {
     setLoading(true)
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-      const response = await axios.post(`${apiUrl}/auth/verify-otp`, {
+      const response = await api.post('/auth/verify-otp', {
         email,
         otp,
         name: isNewUser ? name : undefined,
@@ -147,10 +186,28 @@ const SignIn = () => {
       }, 600)
     } catch (err) {
       console.error(err)
-      setError(err.response?.data?.error || 'Verification failed. OTP check karein.')
-      setShakeActive(true)
-      setOtpArray(['', '', '', '', '', ''])
-      if (otpRefs.current[0]) otpRefs.current[0].focus()
+      const data = err.response?.data
+      const status = err.response?.status
+
+      if (status === 429) {
+        setLockoutState({
+          locked: true,
+          minutesLeft: data.minutesLeft,
+          isHardLock: data.isHardLock,
+          message: data.message || 'Too many failed attempts.',
+        })
+        setError('')
+        setOtpArray(['', '', '', '', '', ''])
+      } else {
+        if (data?.attemptsLeft !== undefined) {
+          setError(`${data.message || data.error} (${data.attemptsLeft} मौका बचा है)`)
+        } else {
+          setError(data?.error || data?.message || 'Verification failed. OTP check karein.')
+        }
+        setShakeActive(true)
+        setOtpArray(['', '', '', '', '', ''])
+        if (otpRefs.current[0]) otpRefs.current[0].focus()
+      }
     } finally {
       setLoading(false)
     }
@@ -375,42 +432,94 @@ const SignIn = () => {
           </form>
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-[10px] font-extrabold text-[#607068] uppercase tracking-wide block text-center">
-                Enter 6-Digit OTP
-              </label>
-              
-              {/* 6 Digit Grid inputs with Shake error and Correct sequentially */}
-              <motion.div
-                animate={shakeActive ? { x: [0, -8, 8, -8, 8, -4, 4, 0] } : {}}
-                transition={{ duration: 0.4 }}
-                onAnimationComplete={() => setShakeActive(false)}
-                className="flex justify-between gap-1.5 max-w-[280px] mx-auto"
+            {lockoutState?.locked ? (
+              <div
+                className="rounded-2xl p-6 text-center my-4"
+                style={{
+                  background: lockoutState.isHardLock ? '#FCEBEB' : '#FDF0E6',
+                  border: `0.5px solid ${lockoutState.isHardLock ? '#F09595' : '#F0C070'}`,
+                }}
               >
-                {otpArray.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    ref={(el) => (otpRefs.current[idx] = el)}
-                    type="text"
-                    pattern="\d*"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleOtpChange(e.target.value, idx)}
-                    onKeyDown={(e) => handleKeyDown(e, idx)}
-                    className={`w-9 h-11 border rounded-lg text-center font-extrabold text-sm focus:outline-none transition-all ${
-                      successOtp
-                        ? 'border-[#1D9E75] bg-[#E1F5EE] text-[#0F5C3A]'
-                        : 'border-[#E8EDEA] bg-[#F4F7F5] focus:border-[#1D9E75] focus:ring-1 focus:ring-[#1D9E75] text-[#0D1B12]'
-                    }`}
-                  />
-                ))}
-              </motion.div>
+                {/* Lock icon */}
+                <div className="text-3xl mb-3">
+                  {lockoutState.isHardLock ? '🔒' : '⏳'}
+                </div>
 
-              <p className="text-[9px] text-[#607068] text-center mt-2 italic font-medium leading-tight">
-                * OTP is logged directly to the server command console output.
-              </p>
-            </div>
+                {/* Message */}
+                <p
+                  className="text-sm font-semibold mb-2 font-display"
+                  style={{
+                    color: lockoutState.isHardLock ? '#A32D2D' : '#854F0B',
+                    fontFamily: 'Mukta, sans-serif',
+                  }}
+                >
+                  {lockoutState.message}
+                </p>
+
+                {/* Countdown */}
+                {lockoutState.minutesLeft > 0 && (
+                  <p
+                    className="text-xs"
+                    style={{
+                      color: lockoutState.isHardLock ? '#C0392B' : '#E07B2A',
+                      fontFamily: 'Mukta, sans-serif',
+                    }}
+                  >
+                    {lockoutState.minutesLeft} मिनट बाद unlock होगा
+                  </p>
+                )}
+
+                {/* Hard lock extra message */}
+                {lockoutState.isHardLock && (
+                  <p
+                    className="text-xs text-[#A8B5AD] mt-2"
+                    style={{
+                      fontFamily: 'Mukta, sans-serif',
+                    }}
+                  >
+                    बहुत ज़्यादा गलत प्रयास के कारण account lock है।
+                    Support के लिए contact करें।
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-[10px] font-extrabold text-[#607068] uppercase tracking-wide block text-center">
+                  Enter 6-Digit OTP
+                </label>
+                
+                {/* 6 Digit Grid inputs with Shake error and Correct sequentially */}
+                <motion.div
+                  animate={shakeActive ? { x: [0, -8, 8, -8, 8, -4, 4, 0] } : {}}
+                  transition={{ duration: 0.4 }}
+                  onAnimationComplete={() => setShakeActive(false)}
+                  className="flex justify-between gap-1.5 max-w-[280px] mx-auto"
+                >
+                  {otpArray.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => (otpRefs.current[idx] = el)}
+                      type="text"
+                      pattern="\d*"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(e.target.value, idx)}
+                      onKeyDown={(e) => handleKeyDown(e, idx)}
+                      className={`w-9 h-11 border rounded-lg text-center font-extrabold text-sm focus:outline-none transition-all ${
+                        successOtp
+                          ? 'border-[#1D9E75] bg-[#E1F5EE] text-[#0F5C3A]'
+                          : 'border-[#E8EDEA] bg-[#F4F7F5] focus:border-[#1D9E75] focus:ring-1 focus:ring-[#1D9E75] text-[#0D1B12]'
+                      }`}
+                    />
+                  ))}
+                </motion.div>
+
+                <p className="text-[9px] text-[#607068] text-center mt-2 italic font-medium leading-tight">
+                  * OTP is logged directly to the server command console output.
+                </p>
+              </div>
+            )}
 
             {/* Profile fields slideup if user is new */}
             <AnimatePresence>
@@ -627,13 +736,29 @@ const SignIn = () => {
               )}
             </AnimatePresence>
 
-            <button
-              type="submit"
-              disabled={loading || successOtp}
-              className="w-full bg-gradient-to-r from-[#1D9E75] to-[#0F5C3A] hover:opacity-95 text-[#FDFFFE] font-bold py-3 rounded-xl transition-all shadow-[0_4px_12px_rgba(15,92,58,0.15)] active:scale-[0.98] disabled:opacity-50 text-xs uppercase tracking-wider"
-            >
-              {loading ? 'Verify kar rahe hain...' : 'Verify & Sign In'}
-            </button>
+            {!lockoutState?.locked && (
+              <button
+                type="submit"
+                disabled={loading || successOtp}
+                className="w-full bg-gradient-to-r from-[#1D9E75] to-[#0F5C3A] hover:opacity-95 text-[#FDFFFE] font-bold py-3 rounded-xl transition-all shadow-[0_4px_12px_rgba(15,92,58,0.15)] active:scale-[0.98] disabled:opacity-50 text-xs uppercase tracking-wider"
+              >
+                {loading ? 'Verify kar rahe hain...' : 'Verify & Sign In'}
+              </button>
+            )}
+
+            {!lockoutState && error && (error.includes('मौका') || error.includes('attempt')) && (
+              <div
+                className="rounded-xl p-3 text-xs text-center my-3 font-semibold"
+                style={{
+                  background: '#FDF0E6',
+                  border: '0.5px solid #F0C070',
+                  color: '#854F0B',
+                  fontFamily: 'Mukta, sans-serif',
+                }}
+              >
+                ⚠️ {error}
+              </div>
+            )}
 
             <button
               type="button"
@@ -644,6 +769,8 @@ const SignIn = () => {
                 setDevOtpMessage('')
                 setDevOtp('')
                 setSuccessOtp(false)
+                setLockoutState(null)
+                setError('')
               }}
               className="w-full text-center text-xs font-bold text-[#1D9E75] hover:underline pt-1"
             >
