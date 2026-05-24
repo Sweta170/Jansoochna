@@ -25,6 +25,9 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:8081',
+  // Production Vercel URLs
+  'https://jansoochna-website.vercel.app',
+  'https://jansoochna-admin.vercel.app',
   process.env.CLIENT_URL,
   process.env.ADMIN_URL
 ].filter(Boolean);
