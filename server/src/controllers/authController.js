@@ -103,6 +103,10 @@ exports.sendOTP = async (req, res) => {
     const existingUser = await User.findOne({ email: email.toLowerCase() })
 
     if (existingUser) {
+      if (existingUser.isBlocked) {
+        return res.status(403).json({ error: 'Aapka account block kar diya gaya hai. Kripya admin se sampark karein.' })
+      }
+
       // ── LOCKOUT CHECK ─────────────────────────────────
       const lockStatus = checkLockStatus(existingUser)
 
@@ -176,6 +180,10 @@ exports.verifyOTP = async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase() })
     if (!user) {
       return res.status(400).json({ error: 'User nahi mila. Pehle OTP bhejein.' })
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ error: 'Aapka account block kar diya gaya hai. Kripya admin se sampark karein.' })
     }
 
     // ── LOCKOUT CHECK ─────────────────────────────────

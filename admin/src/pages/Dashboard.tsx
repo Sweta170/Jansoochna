@@ -29,6 +29,19 @@ export default function Dashboard() {
     fetchOverview();
   }, []);
 
+  if (loading) {
+    return (
+      <div className="h-[calc(100vh-10rem)] flex items-center justify-center text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" />
+          <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+          <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
+          <span className="ml-2 font-medium">Loading dashboard metrics...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Top row KPIs */}

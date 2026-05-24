@@ -15,7 +15,9 @@ router.delete('/issues/:id', requireRole(['superadmin']), adminController.delete
 
 // Posts
 router.get('/posts/reported', adminController.getReportedPosts)
+router.get('/posts', adminController.getAllPosts)
 router.patch('/posts/:id/hide', adminController.hidePost)
+router.delete('/posts/:id', adminController.deletePost)
 
 // Users
 router.get('/users', adminController.getUsers)
@@ -45,6 +47,35 @@ router.patch('/users/:id/unlock', requireRole(['superadmin']), async (req, res) 
       message: `Account unlocked for ${user.name}`,
       user,
     })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// POST /api/admin/users/:id/notify — Send notification to citizen
+router.post('/users/:id/notify', async (req, res) => {
+  try {
+    const { title, body } = req.body
+    if (!body) return res.status(400).json({ message: 'Notification body is required' })
+
+    const Notification = require('../models/Notification')
+    const notification = await Notification.create({
+      user: req.params.id,
+      type: 'admin_broadcast',
+      title: title || 'Admin Sandesh',
+      body,
+      data: { sentBy: req.admin._id }
+    })
+
+    if (req.io) {
+      req.io.to(req.params.id).emit('notification', {
+        type: 'admin_broadcast',
+        title: title || 'Admin Sandesh',
+        body,
+      })
+    }
+
+    res.json({ message: 'Notification sent successfully', notification })
   } catch (err) {
     res.status(500).json({ message: 'Server error' })
   }

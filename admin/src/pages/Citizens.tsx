@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Ban, BellRing, MoreVertical, Lock, Unlock } from 'lucide-react';
 import { api } from '../services/api';
+import toast from 'react-hot-toast';
 
 export default function Citizens() {
   const [citizens, setCitizens] = useState<any[]>([]);
@@ -36,26 +37,46 @@ export default function Citizens() {
   const handleUnlock = async (id: string, name: string) => {
     try {
       const res = await api.patch(`/admin/users/${id}/unlock`);
-      alert(res.data.message || `Unlocked ${name}`);
+      toast.success(res.data.message || `Unlocked ${name}`);
       setCitizens(prev =>
         prev.map(c => c.id === id ? { ...c, status: 'active' } : c)
       );
     } catch (err: any) {
-      alert(err.response?.data?.message || err.response?.data?.error || 'Failed to unlock citizen');
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to unlock citizen');
     }
   };
 
-  const handleToggleBlock = async (id: string, currentStatus: string) => {
+  const handleToggleBlock = async (id: string) => {
     try {
       const res = await api.patch(`/admin/users/${id}/block`);
       const isBlockedNow = res.data.isBlocked;
-      alert(`${isBlockedNow ? 'Blocked' : 'Unblocked'} user successfully`);
+      toast.success(`${isBlockedNow ? 'Blocked' : 'Unblocked'} user successfully`);
       setCitizens(prev =>
         prev.map(c => c.id === id ? { ...c, status: isBlockedNow ? 'blocked' : 'active' } : c)
       );
     } catch (err: any) {
-      alert(err.response?.data?.message || err.response?.data?.error || 'Failed to block/unblock citizen');
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to block/unblock citizen');
     }
+  };
+
+  const handleSendNotification = async (id: string, name: string) => {
+    const body = prompt(`Enter notification message for ${name}:`);
+    if (!body || !body.trim()) return;
+
+    try {
+      await api.post(`/admin/users/${id}/notify`, {
+        title: 'Adhikari Sandesh',
+        body: body.trim()
+      });
+      toast.success(`Notification sent to ${name}`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to send notification');
+    }
+  };
+
+  const handleCopyDetails = (c: any) => {
+    navigator.clipboard.writeText(`ID: ${c.id}\nName: ${c.name}\nPhone: ${c.phone}\nLocation: ${c.location}`);
+    toast.success('Citizen details copied to clipboard!');
   };
 
   return (
@@ -86,8 +107,26 @@ export default function Citizens() {
               </tr>
             </thead>
             <tbody>
-              {citizens.map((c, i) => (
-                <tr key={i} className={`border-b border-border/50 hover:bg-secondary/60 transition-colors ${c.status === 'blocked' ? 'bg-destructive/5' : ''}`}>
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" />
+                      <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+                      <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
+                      <span className="ml-2 font-medium">Loading citizen directory...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : citizens.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                    No citizens found.
+                  </td>
+                </tr>
+              ) : (
+                citizens.map((c, i) => (
+                  <tr key={i} className={`border-b border-border/50 hover:bg-secondary/60 transition-colors ${c.status === 'blocked' ? 'bg-destructive/5' : ''}`}>
                   <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
                   <td className="px-4 py-3 text-muted-foreground font-mono">{c.phone}</td>
                   <td className="px-4 py-3 text-muted-foreground">{c.location}</td>
@@ -109,7 +148,13 @@ export default function Citizens() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <button className="p-1 hover:text-primary transition-colors" title="Send Notification"><BellRing size={16} /></button>
+                      <button 
+                        onClick={() => handleSendNotification(c.id, c.name)}
+                        className="p-1 hover:text-primary transition-colors" 
+                        title="Send Notification"
+                      >
+                        <BellRing size={16} />
+                      </button>
                       
                       {c.status === 'locked' ? (
                         <button 
@@ -121,7 +166,7 @@ export default function Citizens() {
                         </button>
                       ) : (
                         <button 
-                          onClick={() => handleToggleBlock(c.id, c.status)}
+                          onClick={() => handleToggleBlock(c.id)}
                           className={`p-1 transition-colors ${c.status === 'blocked' ? 'text-jade hover:text-jade/80' : 'hover:text-destructive'}`} 
                           title={c.status === 'blocked' ? 'Unblock' : 'Block'}
                         >
@@ -129,11 +174,18 @@ export default function Citizens() {
                         </button>
                       )}
                       
-                      <button className="p-1 hover:text-foreground transition-colors"><MoreVertical size={16} /></button>
+                      <button 
+                        onClick={() => handleCopyDetails(c)}
+                        className="p-1 hover:text-foreground transition-colors" 
+                        title="Copy Details"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>

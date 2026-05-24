@@ -160,6 +160,34 @@ exports.hidePost = async (req, res) => {
   }
 }
 
+exports.getAllPosts = async (req, res) => {
+  try {
+    const query = {}
+    if (req.admin.role === 'state_admin') query.state = req.admin.state
+    if (req.admin.role === 'district_admin') {
+      query.state = req.admin.state
+      query.district = req.admin.district
+    }
+    const posts = await Post.find(query)
+      .populate('author', 'name')
+      .sort({ createdAt: -1 })
+      .limit(100)
+    res.json(posts)
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' })
+  }
+}
+
+exports.deletePost = async (req, res) => {
+  try {
+    const post = await Post.findByIdAndDelete(req.params.id)
+    if (!post) return res.status(404).json({ error: 'Not found' })
+    res.json({ message: 'Post deleted successfully' })
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' })
+  }
+}
+
 exports.getUsers = async (req, res) => {
   try {
     const query = {}

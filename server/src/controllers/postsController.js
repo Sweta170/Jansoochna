@@ -58,6 +58,8 @@ exports.createPost = async (req, res) => {
       body: sanitizedBody,
       type: type || 'notice',
       pincode: req.user.pincode,
+      state: req.user.state || '',
+      district: req.user.district || '',
       author: req.user.id,
     })
 

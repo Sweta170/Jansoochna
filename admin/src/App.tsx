@@ -38,6 +38,7 @@ export default function App() {
                 <Route element={<AppLayout />}>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/issues" element={<Issues />} />
+                  <Route path="/issues/:id" element={<Issues />} />
                   <Route path="/map" element={<MapView />} />
                   <Route path="/citizens" element={<Citizens />} />
                   <Route path="/posts" element={<Posts />} />

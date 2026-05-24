@@ -41,6 +41,10 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  isBlocked: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true })
 
 UserSchema.index({ phone: 1 })

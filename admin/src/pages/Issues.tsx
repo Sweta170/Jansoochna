@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import {
   useReactTable,
@@ -44,10 +45,20 @@ const priorityStyles = {
 };
 
 export default function Issues() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      setSelectedIssueId(id);
+    } else {
+      setSelectedIssueId(null);
+    }
+  }, [id]);
 
   const fetchIssues = async () => {
     try {
@@ -220,19 +231,41 @@ export default function Issues() {
               ))}
             </thead>
             <tbody>
-              {table.getRowModel().rows.map(row => (
-                <tr 
-                  key={row.id} 
-                  onClick={() => setSelectedIssueId(row.original.id)}
-                  className="border-b border-border/50 hover:bg-secondary/60 cursor-pointer transition-colors"
-                >
-                  {row.getVisibleCells().map(cell => (
-                    <td key={cell.id} className="px-4 py-3">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
+              {loading ? (
+                <tr>
+                  <td colSpan={columns.length} className="px-4 py-12 text-center text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" />
+                      <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+                      <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
+                      <span className="ml-2 font-medium">Loading issues list...</span>
+                    </div>
+                  </td>
                 </tr>
-              ))}
+              ) : table.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="px-4 py-12 text-center text-muted-foreground">
+                    No issues reported yet.
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.map(row => (
+                  <tr 
+                    key={row.id} 
+                    onClick={() => {
+                      setSelectedIssueId(row.original.id);
+                      navigate(`/issues/${row.original.id}`);
+                    }}
+                    className="border-b border-border/50 hover:bg-secondary/60 cursor-pointer transition-colors"
+                  >
+                    {row.getVisibleCells().map(cell => (
+                      <td key={cell.id} className="px-4 py-3">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -262,11 +295,15 @@ export default function Issues() {
       {/* Side Panel Overlay */}
       {selectedIssueId && (
         <>
-          <div className="fixed inset-0 bg-foreground/20 z-40 lg:hidden" onClick={() => setSelectedIssueId(null)} />
+          <div className="fixed inset-0 bg-foreground/20 z-40 lg:hidden" onClick={() => {
+            setSelectedIssueId(null);
+            navigate('/issues');
+          }} />
           <IssueDetailPanel 
             issueId={selectedIssueId} 
             onClose={() => {
               setSelectedIssueId(null);
+              navigate('/issues');
               fetchIssues();
             }} 
           />

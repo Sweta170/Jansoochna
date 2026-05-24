@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAdmin } from '../context/AuthContext';
-import { Plus, X, ShieldAlert } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
