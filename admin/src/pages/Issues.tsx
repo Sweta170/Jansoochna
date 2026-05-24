@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
 import {
   useReactTable,
   getCoreRowModel,
@@ -27,19 +28,6 @@ interface Issue {
   assignee: string | null;
 }
 
-const mockData: Issue[] = Array.from({ length: 25 }).map((_, i) => ({
-  id: `20${i}4`,
-  title: ['Streetlight dark', 'Pothole', 'Contaminated water', 'Garbage dump'][i % 4] + ` - Example ${i}`,
-  category: ['Electricity', 'Roads', 'Water', 'Sanitation'][i % 4],
-  district: 'Ludhiana',
-  state: 'Punjab',
-  status: ['open', 'under_review', 'in_progress', 'resolved'][i % 4] as IssueStatus,
-  priority: ['low', 'medium', 'high', 'urgent'][i % 4] as IssuePriority,
-  votes: Math.floor(Math.random() * 100),
-  reportedAt: new Date(Date.now() - Math.random() * 1000000000),
-  assignee: i % 3 === 0 ? 'Admin Sharma' : null,
-}));
-
 const statusStyles = {
   open: 'bg-blue-lt text-blue border-blue/20',
   under_review: 'bg-amber-lt text-amber border-amber/20',
@@ -58,6 +46,44 @@ const priorityStyles = {
 export default function Issues() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchIssues = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/admin/issues');
+      const mapped = res.data.map((issue: any) => {
+        let priority: IssuePriority = 'medium';
+        if (issue.voteCount >= 40) priority = 'urgent';
+        else if (issue.voteCount >= 20) priority = 'high';
+        else if (issue.voteCount >= 10) priority = 'medium';
+        else priority = 'low';
+
+        return {
+          id: issue._id,
+          title: issue.title,
+          category: issue.category ? issue.category.charAt(0).toUpperCase() + issue.category.slice(1) : 'General',
+          district: issue.location?.address?.split(',')[0] || issue.location?.pincode || 'N/A',
+          state: 'Punjab',
+          status: issue.status as IssueStatus,
+          priority,
+          votes: issue.voteCount || 0,
+          reportedAt: new Date(issue.createdAt),
+          assignee: issue.assignedTo ? 'Admin' : null,
+        };
+      });
+      setIssues(mapped);
+    } catch (err) {
+      console.error('Failed to fetch issues:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchIssues();
+  }, []);
   
   const columns = [
     {
@@ -153,7 +179,7 @@ export default function Issues() {
   ];
 
   const table = useReactTable({
-    data: mockData,
+    data: issues,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -237,7 +263,13 @@ export default function Issues() {
       {selectedIssueId && (
         <>
           <div className="fixed inset-0 bg-foreground/20 z-40 lg:hidden" onClick={() => setSelectedIssueId(null)} />
-          <IssueDetailPanel issueId={selectedIssueId} onClose={() => setSelectedIssueId(null)} />
+          <IssueDetailPanel 
+            issueId={selectedIssueId} 
+            onClose={() => {
+              setSelectedIssueId(null);
+              fetchIssues();
+            }} 
+          />
         </>
       )}
     </div>

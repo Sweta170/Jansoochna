@@ -1,42 +1,65 @@
+import { useState, useEffect } from 'react';
 import StatCard from '../components/dashboard/StatCard';
 import IssueChart from '../components/dashboard/IssueChart';
 import CategoryPie from '../components/dashboard/CategoryPie';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
 import RecentIssues from '../components/dashboard/RecentIssues';
+import { api } from '../services/api';
 
 export default function Dashboard() {
+  const [stats, setStats] = useState({
+    totalIssues: 0,
+    resolvedIssues: 0,
+    openIssues: 0,
+    totalUsers: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOverview = async () => {
+      try {
+        const res = await api.get('/admin/stats/overview');
+        setStats(res.data);
+      } catch (err) {
+        console.error('Failed to fetch stats overview:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOverview();
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Top row KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <StatCard 
           title="Open Issues" 
-          value={1247} 
-          trend={12} 
-          trendLabel="vs last week" 
-          sparklineData={[1000, 1050, 1100, 1200, 1150, 1300, 1247]} 
-        />
-        <StatCard 
-          title="Resolved (this week)" 
-          value={89} 
-          trend={-5} 
-          trendLabel="vs last week" 
-          sparklineData={[120, 110, 115, 100, 95, 90, 89]} 
-        />
-        <StatCard 
-          title="Avg Resolve Time" 
-          value={4.2} 
-          format="time"
+          value={stats.openIssues} 
           trend={8} 
-          trendLabel="faster than last week" 
-          sparklineData={[5.1, 4.9, 4.8, 4.5, 4.4, 4.3, 4.2]} 
+          trendLabel="vs last week" 
+          sparklineData={[0, Math.floor(stats.openIssues/3), Math.floor(stats.openIssues/2), stats.openIssues]} 
+        />
+        <StatCard 
+          title="Resolved Issues" 
+          value={stats.resolvedIssues} 
+          trend={15} 
+          trendLabel="vs last week" 
+          sparklineData={[0, Math.floor(stats.resolvedIssues/3), Math.floor(stats.resolvedIssues/2), stats.resolvedIssues]} 
+        />
+        <StatCard 
+          title="Total Issues" 
+          value={stats.totalIssues} 
+          trend={10} 
+          trendLabel="vs last week" 
+          sparklineData={[0, Math.floor(stats.totalIssues/3), Math.floor(stats.totalIssues/2), stats.totalIssues]} 
         />
         <StatCard 
           title="Active Citizens" 
-          value={8420} 
-          trend={24} 
+          value={stats.totalUsers} 
+          trend={5} 
           trendLabel="vs last month" 
-          sparklineData={[6000, 6500, 6800, 7200, 7800, 8100, 8420]} 
+          sparklineData={[0, Math.floor(stats.totalUsers/3), Math.floor(stats.totalUsers/2), stats.totalUsers]} 
         />
       </div>
 

@@ -1,32 +1,60 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Ban, BellRing, MoreVertical, Lock, Unlock } from 'lucide-react';
 import { api } from '../services/api';
 
-const MOCK_CITIZENS = Array.from({ length: 15 }).map((_, i) => ({
-  id: `USR${i}98`,
-  name: `Citizen ${i}`,
-  phone: 'XXXXX' + Math.floor(10000 + Math.random() * 90000),
-  location: 'Ludhiana, PB',
-  points: Math.floor(Math.random() * 500),
-  badge: ['Sewak', 'Jan Nayak', 'Pratinidhi'][i % 3],
-  issuesCount: Math.floor(Math.random() * 10),
-  status: i % 7 === 0 ? 'blocked' : (i % 5 === 0 ? 'locked' : 'active'),
-  joinedAt: new Date(Date.now() - Math.random() * 10000000000).toLocaleDateString(),
-}));
-
 export default function Citizens() {
-  const [citizens, setCitizens] = useState(MOCK_CITIZENS);
+  const [citizens, setCitizens] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchCitizens = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/admin/users');
+      const mapped = res.data.map((user: any) => ({
+        id: user._id,
+        name: user.name || 'Nagarik',
+        phone: user.phone || 'N/A',
+        location: user.location?.city ? `${user.location.city}, ${user.location.state || 'PB'}` : (user.pincode || 'N/A'),
+        points: user.points || 0,
+        badge: user.badge || 'Nagarik',
+        issuesCount: 0, // Mock count as it is not directly computed on user schema
+        status: user.isBlocked ? 'blocked' : (user.otpLockedUntil && new Date(user.otpLockedUntil) > new Date() ? 'locked' : 'active'),
+        joinedAt: new Date(user.createdAt).toLocaleDateString(),
+      }));
+      setCitizens(mapped);
+    } catch (err) {
+      console.error('Failed to fetch citizens:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCitizens();
+  }, []);
 
   const handleUnlock = async (id: string, name: string) => {
     try {
       const res = await api.patch(`/admin/users/${id}/unlock`);
       alert(res.data.message || `Unlocked ${name}`);
-      // Update local state to show 'active' instead of 'locked'
       setCitizens(prev =>
         prev.map(c => c.id === id ? { ...c, status: 'active' } : c)
       );
     } catch (err: any) {
       alert(err.response?.data?.message || err.response?.data?.error || 'Failed to unlock citizen');
+    }
+  };
+
+  const handleToggleBlock = async (id: string, currentStatus: string) => {
+    try {
+      const res = await api.patch(`/admin/users/${id}/block`);
+      const isBlockedNow = res.data.isBlocked;
+      alert(`${isBlockedNow ? 'Blocked' : 'Unblocked'} user successfully`);
+      setCitizens(prev =>
+        prev.map(c => c.id === id ? { ...c, status: isBlockedNow ? 'blocked' : 'active' } : c)
+      );
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.response?.data?.error || 'Failed to block/unblock citizen');
     }
   };
 
@@ -92,7 +120,11 @@ export default function Citizens() {
                           <Unlock size={16} />
                         </button>
                       ) : (
-                        <button className={`p-1 transition-colors ${c.status === 'blocked' ? 'text-jade hover:text-jade/80' : 'hover:text-destructive'}`} title={c.status === 'blocked' ? 'Unblock' : 'Block'}>
+                        <button 
+                          onClick={() => handleToggleBlock(c.id, c.status)}
+                          className={`p-1 transition-colors ${c.status === 'blocked' ? 'text-jade hover:text-jade/80' : 'hover:text-destructive'}`} 
+                          title={c.status === 'blocked' ? 'Unblock' : 'Block'}
+                        >
                           <Ban size={16} />
                         </button>
                       )}

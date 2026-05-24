@@ -15,6 +15,13 @@ const IssueSchema = new mongoose.Schema({
   voteCount:   { type: Number, default: 0 },
   author:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   petitionUrl: String,   // set when voteCount hits 50
+  assignedTo:  { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+  timeline: [{
+    status:    String,
+    note:      String,
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+    date:      { type: Date, default: Date.now }
+  }],
 }, { timestamps: true })
 
 IssueSchema.index({ 'location.pincode': 1, category: 1, status: 1 })
