@@ -1,0 +1,16 @@
+{
+  "home.title": "ਤੁਹਾਡਾ ਮੁਹੱਲਾ",
+  "home.feed.empty": "ਅਜੇ ਕੋਈ ਪੋਸਟ ਨਹੀਂ — ਪਹਿਲਾਂ ਪੋਸਟ ਕਰੋ!",
+  "home.post.button": "ਮੁਹੱਲੇ ਨੂੰ ਦੱਸੋ",
+  "issues.vote": "ਮੈਂ ਵੀ",
+  "issues.vote.count": "{{count}} ਲੋਕ ਪ੍ਰੇਸ਼ਾਨ ਹਨ",
+  "guide.search.placeholder": "ਕੀ ਬਣਵਾਉਣਾ ਹੈ?",
+  "guide.share.whatsapp": "WhatsApp 'ਤੇ ਸ਼ੇਅਰ ਕਰੋ",
+  "report.success.title": "ਧੰਨਵਾਦ! 🙌",
+  "report.success.subtitle": "ਤੁਹਾਡੀ ਆਵਾਜ਼ ਦਰਜ ਹੋ ਗਈ",
+  "janbot.suggestions.ration": "ਰਾਸ਼ਨ ਕਾਰਡ ਕਿਵੇਂ ਬਣਵਾਈਏ?",
+  "janbot.suggestions.nearby": "ਨੇੜਲੀਆਂ ਸਮੱਸਿਆਵਾਂ ਦਿਖਾਓ",
+  "janbot.mic.listening": "ਸੁਣ ਰਿਹਾ ਹਾਂ...",
+  "janbot.mic.placeholder": "ਸੁਣ ਰਿਹਾ ਹਾਂ... ਬੋਲੋ 🎙️",
+  "janbot.mic.tapStop": "ਰੋਕਣ ਲਈ ਦਬਾਓ 🛑"
+}

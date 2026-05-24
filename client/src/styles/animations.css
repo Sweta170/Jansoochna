@@ -1,0 +1,88 @@
+/* Page enter — every page uses this */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: pageEnter 0.4s var(--ease-out) both; }
+
+/* Stagger children */
+.stagger > * { animation: pageEnter 0.35s var(--ease-out) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger > *:nth-child(4) { animation-delay: 0.20s; }
+.stagger > *:nth-child(5) { animation-delay: 0.25s; }
+
+/* Pulse for live indicators */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+.live-dot { animation: livePulse 1.8s ease-in-out infinite; }
+
+/* Shimmer for skeletons */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--c-cloud) 25%, var(--c-fog) 50%, var(--c-cloud) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* Checkmark draw */
+@keyframes checkDraw {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* Diya spin keyframes */
+@keyframes diyaSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.diya-spin { animation: diyaSpin 12s linear infinite; }
+
+/* Blinking cursor for streaming text */
+@keyframes blink {
+  from, to { border-color: transparent }
+  50% { border-color: var(--c-jade); }
+}
+.streaming-cursor {
+  border-right: 2px solid var(--c-jade);
+  animation: blink 0.8s step-end infinite;
+}
+
+/* Glass shine sweep effect */
+@keyframes shineSweep {
+  0% { left: -120%; }
+  25%, 100% { left: 120%; }
+}
+.shine-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.shine-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: skewX(-20deg);
+  animation: shineSweep 4s infinite ease-in-out;
+}
+
+/* Conic avatar ring spin */
+@keyframes conicSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.conic-spin {
+  animation: conicSpin 10s linear infinite;
+}
+
+

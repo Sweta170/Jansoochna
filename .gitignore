@@ -1,0 +1,20 @@
+# Root .gitignore
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+server/.env
+server/.env.local
+client/.env.local
+client/.env.production
+admin/.env.local
+admin/.env.production
+
+# Never commit these
+*.pem
+*.key
+*.cert
+node_modules/
+dist/
+.expo/

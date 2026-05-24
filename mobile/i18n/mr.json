@@ -1,0 +1,16 @@
+{
+  "home.title": "तुमचा मोहल्ला",
+  "home.feed.empty": "अद्याप कोणतीही पोस्ट नाही — पहिली पोस्ट करा!",
+  "home.post.button": "मोहल्ल्याला सांगा",
+  "issues.vote": "मी पण",
+  "issues.vote.count": "{{count}} लोक प्रभावित आहेत",
+  "guide.search.placeholder": "काय बनवायचे आहे?",
+  "guide.share.whatsapp": "WhatsApp वर शेअर करा",
+  "report.success.title": "धन्यवाद! 🙌",
+  "report.success.subtitle": "तुमचा आवाज नोंदवला गेला",
+  "janbot.suggestions.ration": "रेशन कार्ड कसे बनवायचे?",
+  "janbot.suggestions.nearby": "जवळील समस्या दाखवा",
+  "janbot.mic.listening": "ऐकत आहे...",
+  "janbot.mic.placeholder": "ऐकत आहे... बोला 🎙️",
+  "janbot.mic.tapStop": "थांबवण्यासाठी दाबा 🛑"
+}

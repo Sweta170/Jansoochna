@@ -1,0 +1,117 @@
+@import './styles/tokens.css';
+@import './styles/animations.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: var(--c-surface);
+    color: var(--c-ink);
+    font-family: var(--font-body);
+    @apply antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+/* Custom Micro-animations & Styles */
+
+.nav-active {
+  @apply text-jan-green border-b-2 border-jan-green font-medium;
+}
+
+/* Ripple/Scale-up effect for voting button */
+.vote-pop {
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.vote-pop:active {
+  transform: scale(1.25);
+}
+
+/* Custom Leaflet Styling adjustments */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 10;
+}
+
+/* Smooth Checkbox Animation */
+.checkbox-draw {
+  position: relative;
+}
+
+/* PWA mobile app container fixes */
+body, html, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent body elastic scroll, layout handles it */
+}
+
+/* Custom loading skeleton defaults */
+.react-loading-skeleton {
+  --base-color: #ebebeb;
+  --highlight-color: #f5f5f5;
+}
+
+/* Fix email ALL CAPS issue — override any parent text-transform */
+.profile-email {
+  text-transform: none !important;
+  text-transform: lowercase;
+}
+
+/* Prevent location overflow */
+.profile-location {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Progress bar smooth animation */
+.progress-fill {
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Stat cards equal height */
+.stats-grid {
+  align-items: stretch;
+}
+.stats-grid > div {
+  height: 100%;
+}
+
+/* Add shimmer keyframe to global CSS */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+/* Hide scrollbar on filter chips row */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Live pulse dot animation */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* Smooth chip transitions */
+.filter-chip {
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Sticky header shadow on scroll */
+.board-header-scrolled {
+  box-shadow: 0 4px 20px rgba(10, 61, 36, 0.15);
+}

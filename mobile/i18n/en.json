@@ -1,0 +1,16 @@
+{
+  "home.title": "Your Neighbourhood",
+  "home.feed.empty": "No posts yet — be the first to post!",
+  "home.post.button": "Tell your neighbourhood",
+  "issues.vote": "Me too",
+  "issues.vote.count": "{{count}} people affected",
+  "guide.search.placeholder": "What do you want to make?",
+  "guide.share.whatsapp": "Share on WhatsApp",
+  "report.success.title": "Thank You! 🙌",
+  "report.success.subtitle": "Your voice has been recorded",
+  "janbot.suggestions.ration": "How to get a ration card?",
+  "janbot.suggestions.nearby": "Show nearby issues",
+  "janbot.mic.listening": "Listening...",
+  "janbot.mic.placeholder": "Listening... speak now 🎙️",
+  "janbot.mic.tapStop": "Tap to stop 🛑"
+}

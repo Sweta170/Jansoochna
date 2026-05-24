@@ -1,0 +1,10 @@
+# Client .gitignore
+node_modules/
+dist/
+.env.local
+.env.production
+.env.development
+.env.*.local
+*.pem
+*.key
+*.cert

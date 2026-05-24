@@ -1,0 +1,7 @@
+# Server .gitignore
+node_modules/
+.env
+.env.local
+*.pem
+*.key
+*.cert

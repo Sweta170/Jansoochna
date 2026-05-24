@@ -1,0 +1,32 @@
+export const colors = {
+  forest:     '#0F5C3A',
+  jade:       '#1D9E75',
+  mint:       '#5DC9A1',
+  mintLt:     '#E1F5EE',
+  saffron:    '#E07B2A',
+  saffronLt:  '#FDF0E6',
+  turmeric:   '#C9A227',
+  crimson:    '#C0392B',
+  crimsonLt:  '#FDECEA',
+  ink:        '#0D1B12',
+  charcoal:   '#2D3A32',
+  slate:      '#607068',
+  mist:       '#A8B5AD',
+  cloud:      '#E8EDEA',
+  fog:        '#F4F7F5',
+  white:      '#FDFFFE',
+}
+
+export const landingColors = {
+  forest:     '#0A3D24',
+  jade:       '#1D9E75',
+  mint:       '#5DC9A1',
+  mintLt:     '#E1F5EE',
+  saffron:    '#E07B2A',
+  turmeric:   '#C9A227',
+  parchment:  '#F5F0E8',
+  paper:      '#FDFAF4',
+  ink:        '#0D1B12',
+  charcoal:   '#2D3A32',
+  slate:      '#607068',
+}
