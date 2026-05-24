@@ -124,3 +124,27 @@ exports.createAdmin = async (req, res) => {
     res.status(500).json({ error: 'Server error' })
   }
 }
+
+exports.getAdmins = async (req, res) => {
+  try {
+    const admins = await Admin.find().select('-password').sort({ createdAt: -1 })
+    res.json(admins)
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' })
+  }
+}
+
+exports.toggleAdminStatus = async (req, res) => {
+  try {
+    const { id } = req.params
+    const admin = await Admin.findById(id)
+    if (!admin) return res.status(404).json({ error: 'Admin not found' })
+    if (admin.role === 'superadmin') return res.status(400).json({ error: 'Cannot deactivate superadmin' })
+
+    admin.isActive = !admin.isActive
+    await admin.save()
+    res.json({ message: `Admin status toggled successfully`, isActive: admin.isActive })
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' })
+  }
+}
