@@ -23,11 +23,17 @@ function csrfProtection(req, res, next) {
   // Skip CSRF for:
   // 1. Mobile app & admin requests (use Bearer token, not cookies)
   // 2. GET, HEAD, OPTIONS (read-only, safe methods)
+  // 3. Admin portal API routes (use localStorage Bearer tokens, not cookies)
+  // 4. Non-browser clients (CSRF only affects browsers where cookies are auto-sent)
   const authHeader = req.headers['authorization']
   const isMobileAppOrAdmin = authHeader && authHeader.startsWith('Bearer ')
   const isSafeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+  const isAdminRoute = req.path.startsWith('/api/admin')
 
-  if (isMobileAppOrAdmin || isSafeMethod) {
+  const ua = req.headers['user-agent'] || ''
+  const isBrowser = ua.includes('Mozilla')
+
+  if (isMobileAppOrAdmin || isSafeMethod || isAdminRoute || !isBrowser) {
     return next()
   }
 
