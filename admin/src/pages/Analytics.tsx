@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { Download, Calendar } from 'lucide-react';
+import { Download, Calendar, ChevronDown } from 'lucide-react';
+import { api } from '../services/api';
+import toast from 'react-hot-toast';
 
 const volumeData = [
   { state: 'PB', issues: 1200 },
@@ -27,6 +30,42 @@ const growthData = [
 ];
 
 export default function Analytics() {
+  const [timeRange, setTimeRange] = useState('30');
+
+  const handleExportCSV = async () => {
+    try {
+      toast.loading('Generating report...', { id: 'csv-export' });
+      const res = await api.get('/admin/issues');
+      const issues = res.data;
+      
+      const headers = ['Issue ID', 'Title', 'Category', 'Status', 'Pincode', 'Votes', 'Date Reported'];
+      const rows = issues.map((issue: any) => [
+        issue._id,
+        `"${(issue.title || '').replace(/"/g, '""')}"`,
+        issue.category || 'other',
+        issue.status || 'open',
+        issue.location?.pincode || 'N/A',
+        issue.voteCount || 0,
+        new Date(issue.createdAt).toLocaleDateString()
+      ]);
+      
+      const csvContent = [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `jansoochna_issues_report_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Report exported successfully!', { id: 'csv-export' });
+    } catch (err) {
+      toast.error('Failed to export CSV report', { id: 'csv-export' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -35,10 +74,28 @@ export default function Analytics() {
           <p className="text-muted-foreground text-sm">Deep insights into civic engagement and resolution performance</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-secondary text-foreground font-semibold rounded-lg border border-border hover:bg-border transition-colors">
-            <Calendar size={16} /> Last 30 Days
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg shadow-sm hover:opacity-90 transition-opacity">
+          {/* Custom Select Box styled to match exact dashboard aesthetic */}
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={16} />
+            <select 
+              value={timeRange} 
+              onChange={(e) => {
+                setTimeRange(e.target.value);
+                toast.success(`Timeframe changed to ${e.target.value === '7' ? '7 days' : e.target.value === '30' ? '30 days' : '90 days'}`);
+              }}
+              className="appearance-none pl-10 pr-9 py-2 bg-secondary text-foreground font-semibold rounded-lg border border-border focus:outline-none focus:ring-1 focus:ring-primary text-sm shadow-sm cursor-pointer"
+            >
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={14} />
+          </div>
+
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-lg shadow-sm hover:opacity-90 transition-opacity"
+          >
             <Download size={16} /> Export Report (CSV)
           </button>
         </div>
