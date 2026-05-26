@@ -83,6 +83,14 @@ Follow these simple steps:
 
 ---
 
+## Production Deployments
+
+- **Citizen Web App (Vercel):** [https://jansoochna-website.vercel.app](https://jansoochna-website.vercel.app)
+- **Admin Dashboard (Vercel):** [https://jansoochna-admin.vercel.app](https://jansoochna-admin.vercel.app)
+- **Backend API Server (Render):** [https://jansoochna-api.onrender.com](https://jansoochna-api.onrender.com)
+
+---
+
 ## Features Implemented
 - **Phase 1 — Auth & Scaffold**: In-memory Access tokens, secure HTTPOnly refresh token rotation, Indian pincode onboarding.
 - **Phase 2 — Form Guide Wizard**: 12 Punjab govt form guides, step-by-step document checkmark collection, Tehsil geolocator map, WhatsApp sharing engine.
