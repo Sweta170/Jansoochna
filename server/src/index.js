@@ -24,6 +24,7 @@ connectDB()
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://localhost:5175',
   'http://localhost:8081',
   // Production Vercel URLs
   'https://jansoochna-website.vercel.app',
@@ -51,7 +52,9 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) return callback(null, true)
 
-    if (allowedOrigins.includes(origin)) {
+    const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+
+    if (allowedOrigins.includes(origin) || (process.env.NODE_ENV === 'development' && isLocalhost)) {
       callback(null, true)
     } else {
       console.warn('[CORS] Blocked origin:', origin)
