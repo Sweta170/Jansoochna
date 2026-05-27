@@ -56,7 +56,8 @@ export default function Login() {
       return;
     }
 
-    if (!reqEmail.trim().toLowerCase().endsWith('.gov.in')) {
+    const cleanEmail = reqEmail.replace(/[\s\u200B-\u200D\uFEFF]/g, '').toLowerCase();
+    if (!cleanEmail.endsWith('.gov.in')) {
       toast.error('Only official .gov.in email addresses are accepted.');
       return;
     }
@@ -65,7 +66,7 @@ export default function Login() {
     try {
       await api.post('/admin/request-access', {
         full_name: fullName.trim(),
-        email: reqEmail.trim().toLowerCase(),
+        email: cleanEmail,
         designation: designation.trim(),
         state: state.trim(),
         district: district.trim()
