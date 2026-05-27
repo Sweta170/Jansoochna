@@ -117,6 +117,8 @@ app.use('/api/petition',   require('./routes/petition'))
 app.use('/api/admin/auth', authLimiter, require('./routes/adminAuth'))
 app.use('/api/admin/stats', require('./routes/stats'))
 app.use('/api/admin',      require('./routes/admin'))
+app.use('/api/admin',      require('./routes/adminAccessRequest'))
+
 
 // Basic status route
 app.get('/health', (req, res) => {

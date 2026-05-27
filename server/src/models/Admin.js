@@ -9,6 +9,7 @@ const AdminSchema = new mongoose.Schema({
   district:    String,       // null for state_admin
   isActive:    { type: Boolean, default: true },
   lastLogin:   Date,
+  must_change_password: { type: Boolean, default: false },
 }, { timestamps: true })
 
 module.exports = mongoose.model('Admin', AdminSchema)
