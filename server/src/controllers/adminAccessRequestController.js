@@ -15,13 +15,10 @@ exports.requestAccess = async (req, res) => {
     }
 
     const trimmedEmail = email.trim().toLowerCase()
-    const emailParts = trimmedEmail.split('@')
-    const domain = emailParts[1]
-
-    // Check if domain is gov.in or ends with .gov.in
-    if (!domain || (domain !== 'gov.in' && !domain.endsWith('.gov.in'))) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(trimmedEmail)) {
       return res.status(400).json({ 
-        error: 'Keval official .gov.in email allowed hai (Only official .gov.in emails are allowed).' 
+        error: 'Kripya ek sahi email address enter karein (Please enter a valid email address).' 
       })
     }
 

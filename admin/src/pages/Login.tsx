@@ -57,8 +57,9 @@ export default function Login() {
     }
 
     const cleanEmail = reqEmail.replace(/[\s\u200B-\u200D\uFEFF]/g, '').toLowerCase();
-    if (!cleanEmail.endsWith('.gov.in')) {
-      toast.error('Only official .gov.in email addresses are accepted.');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      toast.error('Please enter a valid email address.');
       return;
     }
 
@@ -242,14 +243,14 @@ export default function Login() {
 
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold mb-1.5 block">
-                  Official Email (.gov.in)
+                  Official Email
                 </label>
                 <input 
                   type="email"
                   value={reqEmail}
                   onChange={(e) => setReqEmail(e.target.value)}
                   className="w-full bg-[#111d2a] border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[#1D9E75] focus:ring-1 focus:ring-[#1D9E75] transition-all"
-                  placeholder="e.g. rajesh.kumar@gov.in"
+                  placeholder="e.g. rajesh.kumar@example.com"
                   required
                 />
               </div>
