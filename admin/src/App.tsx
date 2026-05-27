@@ -14,7 +14,9 @@ import Posts from './pages/Posts';
 import Admins from './pages/Admins';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import AccessRequests from './pages/admin/AccessRequests';
 import AppLayout from './components/layout/AppLayout';
+
 
 const queryClient = new QueryClient();
 
@@ -43,6 +45,7 @@ export default function App() {
                   <Route path="/citizens" element={<Citizens />} />
                   <Route path="/posts" element={<Posts />} />
                   <Route path="/admins" element={<Admins />} />
+                  <Route path="/access-requests" element={<AccessRequests />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/settings" element={<Settings />} />
                 </Route>

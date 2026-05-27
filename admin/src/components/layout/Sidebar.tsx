@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { api } from '../../services/api';
+import { useQuery } from '@tanstack/react-query';
 
 export default function Sidebar({ collapsed }: { collapsed: boolean }) {
   const { admin, can } = useAdmin();
@@ -27,16 +28,37 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
     return () => clearInterval(interval);
   }, []);
 
+  // Poll for pending access requests count every 30 seconds (superadmin only)
+  const { data: pendingRequests } = useQuery({
+    queryKey: ['pendingAccessRequestsCount'],
+    queryFn: async () => {
+      const res = await api.get('/admin/access-requests', { params: { status: 'pending' } });
+      return res.data;
+    },
+    enabled: admin?.role === 'superadmin',
+    refetchInterval: 30000,
+  });
+
+  const pendingRequestsCount = pendingRequests?.length || 0;
+
   const links = [
     { name: 'Overview', to: '/', icon: LayoutDashboard },
     { name: 'Issues', to: '/issues', icon: AlertTriangle, badge: openIssuesCount > 0 ? openIssuesCount : undefined },
     { name: 'Map View', to: '/map', icon: MapIcon },
     { name: 'Citizens', to: '/citizens', icon: Users, permission: 'citizens.view' },
     { name: 'Posts', to: '/posts', icon: MessageSquare, permission: 'posts.moderate' },
+    { 
+      name: 'Access Requests', 
+      to: '/access-requests', 
+      icon: Users, 
+      role: 'superadmin', 
+      badge: pendingRequestsCount > 0 ? pendingRequestsCount : undefined 
+    },
     { name: 'Admins', to: '/admins', icon: ShieldCheck, permission: 'admins.view' },
     { name: 'Analytics', to: '/analytics', icon: BarChart3, permission: 'analytics.state' },
     { name: 'Settings', to: '/settings', icon: Settings },
   ];
+
 
   return (
     <aside className={clsx(
@@ -72,6 +94,7 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
       <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-1">
         {links.map((link) => {
           if (link.permission && !can(link.permission)) return null;
+          if (link.role && admin?.role !== link.role) return null;
           const Icon = link.icon;
           
           return (
