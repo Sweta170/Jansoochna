@@ -3,25 +3,28 @@ import { Link, useLocation } from 'react-router-dom'
 import { MessageSquare, AlertTriangle, Plus, ClipboardList, UserCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '../../services/api'
+import { useAuth } from '../../hooks/useAuth'
 
 const BottomNav = () => {
+  const { user } = useAuth()
   const location = useLocation()
-  const [openIssuesCount, setOpenIssuesCount] = useState(3) // Fallback count
+  const [openIssuesCount, setOpenIssuesCount] = useState(0) // Start clean at 0
 
-  // Fetch actual open issues count in background
+  // Fetch actual open issues count for user's pincode in background
   useEffect(() => {
     const fetchIssuesCount = async () => {
       try {
-        const response = await api.get('/issues?limit=1')
-        if (response.data && response.data.total) {
-          setOpenIssuesCount(response.data.total)
+        const pincode = user?.pincode || ''
+        const response = await api.get(`/issues?limit=1&pincode=${pincode}`)
+        if (response.data && response.data.pagination) {
+          setOpenIssuesCount(response.data.pagination.total)
         }
       } catch (err) {
-        console.warn('Could not fetch issues count, using mock count')
+        console.warn('Could not fetch issues count')
       }
     }
     fetchIssuesCount()
-  }, [location.pathname])
+  }, [location.pathname, user?.pincode])
 
   const tabs = [
     { path: '/app', label: 'Board', icon: MessageSquare },
