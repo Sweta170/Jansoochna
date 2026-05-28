@@ -302,6 +302,11 @@ router.post('/', authMiddleware, janbotLimiter, async (req, res) => {
       // Prepend a warning icon to let the user know we are operating in offline/fallback mode
       res.write(`data: ${JSON.stringify({ text: '⚠️ [Offline Mode] ' })}\n\n`)
 
+      const { messages, state } = req.body || {}
+      const lastUserMsg = messages && messages.length > 0 
+        ? messages[messages.length - 1].content 
+        : ''
+
       const mockText = await getSmartMockResponse(lastUserMsg, state)
       const words = mockText.split(' ')
       for (const word of words) {
