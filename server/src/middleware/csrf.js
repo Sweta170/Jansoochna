@@ -8,7 +8,7 @@ const {
   cookieName: 'csrf_token',
   cookieOptions: {
     httpOnly: false, // MUST be false — client JS needs to read this cookie
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: 60 * 60 * 24, // 24 hours
