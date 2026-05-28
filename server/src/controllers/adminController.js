@@ -197,9 +197,39 @@ exports.getUsers = async (req, res) => {
       query.district = req.admin.district
     }
     
-    const users = await User.find(query).select('-otp').sort({ createdAt: -1 }).limit(100)
+    const users = await User.aggregate([
+      { $match: query },
+      { $sort: { createdAt: -1 } },
+      { $limit: 100 },
+      {
+        $lookup: {
+          from: 'issues',
+          localField: '_id',
+          foreignField: 'author',
+          as: 'userIssues'
+        }
+      },
+      {
+        $addFields: {
+          issuesCount: { $size: '$userIssues' }
+        }
+      },
+      {
+        $project: {
+          otp: 0,
+          otpExpiry: 0,
+          otpAttempts: 0,
+          otpLockedUntil: 0,
+          otpLockCount: 0,
+          lastOtpRequest: 0,
+          userIssues: 0
+        }
+      }
+    ])
+
     res.json(users)
   } catch (err) {
+    console.error('getUsers aggregation error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 }

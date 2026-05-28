@@ -18,7 +18,7 @@ export default function Citizens() {
         location: user.location?.city ? `${user.location.city}, ${user.location.state || 'PB'}` : (user.pincode || 'N/A'),
         points: user.points || 0,
         badge: user.badge || 'Nagarik',
-        issuesCount: 0, // Mock count as it is not directly computed on user schema
+        issuesCount: user.issuesCount || 0,
         status: user.isBlocked ? 'blocked' : (user.otpLockedUntil && new Date(user.otpLockedUntil) > new Date() ? 'locked' : 'active'),
         joinedAt: new Date(user.createdAt).toLocaleDateString(),
       }));

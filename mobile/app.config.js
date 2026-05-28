@@ -18,7 +18,8 @@ module.exports = {
     permissions: [
       "ACCESS_FINE_LOCATION",
       "CAMERA",
-      "READ_EXTERNAL_STORAGE"
+      "READ_EXTERNAL_STORAGE",
+      "RECORD_AUDIO"
     ]
   },
   ios: {
@@ -29,6 +30,7 @@ module.exports = {
   },
   plugins: [
     "expo-router",
+    "expo-speech-recognition",
     [
       "expo-font",
       {

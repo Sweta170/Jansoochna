@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { View, Text, Pressable, TextInput, KeyboardAvoidingView, Platform, ScrollView, Modal, DeviceEventEmitter } from 'react-native'
+import { View, Text, Pressable, TextInput, KeyboardAvoidingView, Platform, ScrollView, Modal, DeviceEventEmitter, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, FadeInUp, FadeIn } from 'react-native-reanimated'
 import api from '../services/api'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useTranslation } from 'react-i18next'
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition'
 
 // Emoji data organized by category
 const EMOJI_DATA = {
@@ -38,6 +39,31 @@ export default function JanBot() {
   const recognitionRef = useRef(null)
   const nativeTimeoutRef = useRef(null)
   const nativeIntervalRef = useRef(null)
+
+  // Handle native speech-to-text recognition events (Android/iOS)
+  useSpeechRecognitionEvent('result', (event) => {
+    if (Platform.OS === 'web') return
+    const text = event.results[0]?.transcript || ''
+    if (text) {
+      setInputText(text)
+    }
+  })
+
+  useSpeechRecognitionEvent('error', (event) => {
+    if (Platform.OS === 'web') return
+    console.error('Native speech recognition error:', event.error)
+    setIsListening(false)
+  })
+
+  useSpeechRecognitionEvent('end', () => {
+    if (Platform.OS === 'web') return
+    setIsListening(false)
+  })
+
+  useSpeechRecognitionEvent('start', () => {
+    if (Platform.OS === 'web') return
+    setIsListening(true)
+  })
 
   // Waveform heights for animated sound waves
   const bar1 = useSharedValue(1)
@@ -122,7 +148,7 @@ export default function JanBot() {
     }
   }, [])
 
-  const startListening = () => {
+  const startListening = async () => {
     setInputText('')
     setIsListening(true)
     setShowEmoji(false)
@@ -141,58 +167,33 @@ export default function JanBot() {
         setIsListening(false)
       }
     } else {
-      // Mock typing realistic localized queries on native mobile
-      const mockQueries = {
-        hi: [
-          'जाति प्रमाण पत्र कैसे बनेगा?',
-          'राशन कार्ड के लिए क्या दस्तावेज चाहिए?',
-          'आय प्रमाण पत्र की फीस कितनी है?',
-          'निवास प्रमाण पत्र कितने दिन में बनता है?'
-        ],
-        pa: [
-          'ਜਾਤੀ ਸਰਟੀਫਿਕੇਟ ਕਿਵੇਂ ਬਣੇਗਾ?',
-          'ਰਾਸ਼ਨ ਕਾਰਡ ਲਈ ਕਿਹੜੇ ਦਸਤਾਵੇਜ਼ ਚਾਹੀਦੇ ਹਨ?',
-          'ਆਮਦਨ ਸਰਟੀਫਿਕੇਟ ਦੀ ਫੀਸ ਕਿੰਨੀ ਹੈ?',
-          'ਨਿਵਾਸ ਸਰਟੀਫਿਕੇਟ ਕਿੰਨੇ ਦਿਨਾਂ ਵਿੱਚ ਬਣਦਾ ਹੈ?'
-        ],
-        mr: [
-          'जात प्रमाणपत्र कसे बनवायचे?',
-          'रेशन कार्डसाठी कोणती कागदपत्रे हवीत?',
-          'उत्पन्नाच्या दाखल्याची फी किती आहे?',
-          'रहिवासी दाखला किती दिवसात मिळतो?'
-        ],
-        en: [
-          'How to apply for caste certificate?',
-          'What documents are needed for ration card?',
-          'What is the fee for income certificate?',
-          'How many days to get domicile certificate?'
-        ]
-      }
-
-      const langQueries = mockQueries[i18n.language] || mockQueries.hi
-      const randomQuery = langQueries[Math.floor(Math.random() * langQueries.length)]
-      
-      let words = randomQuery.split(' ')
-      let currentWordIndex = 0
-      let tempText = ''
-
-      if (nativeIntervalRef.current) clearInterval(nativeIntervalRef.current)
-      if (nativeTimeoutRef.current) clearTimeout(nativeTimeoutRef.current)
-
-      const interval = setInterval(() => {
-        if (currentWordIndex < words.length) {
-          tempText += (currentWordIndex === 0 ? '' : ' ') + words[currentWordIndex]
-          setInputText(tempText)
-          currentWordIndex++
+      try {
+        // Request microphone and speech permissions on native Android/iOS
+        const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync()
+        if (!permission.granted) {
+          setIsListening(false)
+          Alert.alert(
+            i18n.language === 'en' ? 'Permission Denied' : 'अनुमति नहीं मिली',
+            i18n.language === 'en' 
+              ? 'Please grant microphone and speech recognition permissions in settings to use voice search.' 
+              : 'आवाज से खोजने के लिए कृपया सेटिंग्स में माइक्रोफोन और स्पीच रिकग्निशन की अनुमति दें।'
+          )
+          return
         }
-      }, 500)
 
-      nativeIntervalRef.current = interval
+        const langMap = { hi: 'hi-IN', pa: 'pa-IN', mr: 'mr-IN', en: 'en-US' }
+        const activeLang = langMap[i18n.language] || 'hi-IN'
 
-      nativeTimeoutRef.current = setTimeout(() => {
-        clearInterval(interval)
+        // Start native recording
+        ExpoSpeechRecognitionModule.start({
+          lang: activeLang,
+          interimResults: true,
+          continuous: false
+        })
+      } catch (err) {
+        console.error('Native speech recognition start failed:', err)
         setIsListening(false)
-      }, 3500)
+      }
     }
   }
 
@@ -207,6 +208,11 @@ export default function JanBot() {
         }
       }
     } else {
+      try {
+        ExpoSpeechRecognitionModule.stop()
+      } catch (err) {
+        console.error('Native speech recognition stop failed:', err)
+      }
       if (nativeTimeoutRef.current) clearTimeout(nativeTimeoutRef.current)
       if (nativeIntervalRef.current) clearInterval(nativeIntervalRef.current)
     }

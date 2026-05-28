@@ -3,7 +3,7 @@ const Anthropic = require('@anthropic-ai/sdk')
 const router = express.Router()
 const { authMiddleware } = require('../middleware/auth')
 const { janbotLimiter } = require('../middleware/rateLimit')
-const formData = require('../data/formData')
+const Form = require('../models/Form')
 const Issue = require('../models/Issue')
 
 let client
@@ -28,7 +28,7 @@ const TOOLS = [
       properties: {
         document_id: {
           type: 'string',
-          description: `One of: ${formData.map(e => e.id).join(', ')}`
+          description: 'One of: caste-certificate, income-certificate, domicile-certificate, birth-certificate, death-certificate, ration-card-new, ration-card-correction, voter-id-new, driving-licence, pm-awas-yojana, aadhaar-correction, marriage-certificate, bihar-caste-certificate, bihar-income-certificate, bihar-domicile-certificate, bihar-birth-certificate, bihar-ration-card'
         },
         state: {
           type: 'string',
@@ -54,7 +54,7 @@ const TOOLS = [
 ]
 
 // Smart local chatbot for when no Anthropic API key is set
-function getSmartMockResponse(userMessage, state) {
+async function getSmartMockResponse(userMessage, state) {
   const msg = userMessage.toLowerCase()
   
   // Detect state from message
@@ -81,11 +81,12 @@ function getSmartMockResponse(userMessage, state) {
   }
   
   let matchedForm = null
+  const forms = await Form.find()
   for (const [key, terms] of Object.entries(keywords)) {
     if (terms.some(term => msg.includes(term))) {
       // Find form matching both keyword and state
-      matchedForm = formData.find(f => {
-        const nameMatch = f.id.includes(key) || f.name.toLowerCase().includes(key)
+      matchedForm = forms.find(f => {
+        const nameMatch = f.slug.includes(key) || f.title.toLowerCase().includes(key)
         const stateMatch = f.state === detectedState || f.state === 'all'
         return nameMatch && stateMatch
       })
@@ -94,19 +95,19 @@ function getSmartMockResponse(userMessage, state) {
   }
   
   if (matchedForm) {
-    const docs = matchedForm.documents.map(d => `📎 ${d.nameHindi} (${d.name})`).join('\n')
-    const tip = matchedForm.tips[0] || ''
+    const docs = (matchedForm.requiredDocuments || []).map(d => `📎 ${d.nameHindi} (${d.name})`).join('\n')
+    const tip = matchedForm.steps?.[0] || ''
     const stateLabel = matchedForm.state === 'all' ? 'पूरे भारत' : matchedForm.state === 'bihar' ? 'बिहार' : 'पंजाब'
     
-    return `🙏 ${matchedForm.nameHindi} के लिए जानकारी (${stateLabel}):\n\n` +
+    return `🙏 ${matchedForm.nameHindi || matchedForm.title} के लिए जानकारी (${stateLabel}):\n\n` +
       `📋 ज़रूरी कागज़ात:\n${docs}\n\n` +
-      `🏢 कार्यालय: ${matchedForm.office.typeHindi}\n` +
-      `⏰ समय: ${matchedForm.office.hours}\n` +
+      `🏢 कार्यालय: ${matchedForm.office?.typeHindi || matchedForm.officeAddress}\n` +
+      `⏰ समय: ${matchedForm.office?.hours || '9:00 AM – 5:00 PM'}\n` +
       `💰 शुल्क: ${matchedForm.fees}\n` +
-      `📅 समय: ${matchedForm.processingDays}\n` +
-      `🌐 ऑनलाइन: ${matchedForm.office.onlineUrl}\n\n` +
+      `📅 समय: ${matchedForm.processingTime}\n` +
+      `🌐 ऑनलाइन: ${matchedForm.downloadUrl || (matchedForm.office?.onlineUrl)}\n\n` +
       `💡 टिप: ${tip}\n\n` +
-      `📞 Helpline: ${matchedForm.helpline}`
+      `📞 Helpline: ${matchedForm.helpline || '1800-180-1551'}`
   }
   
   // Greetings
@@ -144,7 +145,7 @@ function getSmartMockResponse(userMessage, state) {
   }
   
   // Default response
-  const allForms = formData.map(f => `${f.categoryIcon} ${f.nameHindi}`).filter((v, i, a) => a.indexOf(v) === i).slice(0, 8)
+  const allForms = forms.map(f => `${f.categoryIcon || '📄'} ${f.nameHindi || f.title}`).filter((v, i, a) => a.indexOf(v) === i).slice(0, 8)
   return `🤖 मुझे आपका सवाल समझ नहीं आया। कृपया इनमें से किसी एक के बारे में पूछें:\n\n${allForms.join('\n')}\n\nउदाहरण: "Income certificate Bihar" या "जाति प्रमाण पत्र कैसे बनेगा?" 😊`
 }
 
@@ -163,7 +164,7 @@ router.post('/', authMiddleware, janbotLimiter, async (req, res) => {
 
     // If client is not initialized, use smart mock
     if (!client) {
-      const mockText = getSmartMockResponse(lastUserMsg, state)
+      const mockText = await getSmartMockResponse(lastUserMsg, state)
       
       const words = mockText.split(' ')
       for (const word of words) {
@@ -210,22 +211,21 @@ router.post('/', authMiddleware, janbotLimiter, async (req, res) => {
             try {
               if (block.name === 'get_form_guide') {
                 const targetState = block.input.state || state || 'all'
-                const entry = formData.find(e => {
-                  const idMatch = e.id === block.input.document_id
-                  const stateMatch = e.state === targetState || e.state === 'all'
-                  return idMatch && stateMatch
-                }) || formData.find(e => e.id === block.input.document_id)
+                let entry = await Form.findOne({ slug: block.input.document_id, $or: [{ state: targetState }, { state: 'all' }] })
+                if (!entry) {
+                  entry = await Form.findOne({ slug: block.input.document_id })
+                }
                 
                 result = entry 
                   ? JSON.stringify({
-                      nameHindi: entry.nameHindi,
+                      nameHindi: entry.nameHindi || entry.title,
                       state: entry.state,
-                      documents: entry.documents.map(d => d.nameHindi),
-                      office: entry.office.typeHindi,
+                      documents: (entry.requiredDocuments || []).map(d => d.nameHindi),
+                      office: entry.office?.typeHindi || entry.officeAddress,
                       fees: entry.fees,
-                      days: entry.processingDays,
-                      onlineUrl: entry.office.onlineUrl,
-                      helpline: entry.helpline
+                      days: entry.processingTime,
+                      onlineUrl: entry.downloadUrl || (entry.office?.onlineUrl),
+                      helpline: entry.helpline || '1800-180-1551'
                     }) 
                   : 'Form guide entry not found for this state. Try asking about a different state or document.'
               } else if (block.name === 'search_nearby_issues') {
