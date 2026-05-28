@@ -290,7 +290,29 @@ router.post('/', authMiddleware, janbotLimiter, async (req, res) => {
 
   } catch (err) {
     console.error('JanBot route error:', err)
-    res.write(`data: ${JSON.stringify({ error: 'Server details retrieval error.' })}\n\n`)
+    
+    // Fallback to smart mock response in case of API failure (like low credits or connection errors)
+    try {
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'text/event-stream')
+        res.setHeader('Cache-Control', 'no-cache')
+        res.setHeader('Connection', 'keep-alive')
+      }
+
+      // Prepend a warning icon to let the user know we are operating in offline/fallback mode
+      res.write(`data: ${JSON.stringify({ text: '⚠️ [Offline Mode] ' })}\n\n`)
+
+      const mockText = await getSmartMockResponse(lastUserMsg, state)
+      const words = mockText.split(' ')
+      for (const word of words) {
+        res.write(`data: ${JSON.stringify({ text: word + ' ' })}\n\n`)
+        await new Promise(r => setTimeout(r, 40))
+      }
+    } catch (fallbackErr) {
+      console.error('Fallback error:', fallbackErr)
+      res.write(`data: ${JSON.stringify({ text: '⚠️ Server connection error. Please try again later.' })}\n\n`)
+    }
+    
     res.write('data: [DONE]\n\n')
     res.end()
   }
