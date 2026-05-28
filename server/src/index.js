@@ -11,7 +11,6 @@ const helmet = require('helmet')
 const connectDB = require('./config/db')
 const { csrfProtection, generateToken } = require('./middleware/csrf')
 const rateLimit = require('express-rate-limit')
-const { getLandingPageHTML } = require('./utils/apiLandingPage')
 
 
 // Start the background Bull worker
@@ -128,10 +127,6 @@ app.use('/api/admin',      require('./routes/admin'))
 app.use('/api/admin',      require('./routes/adminAccessRequest'))
 
 
-// Root API landing page
-app.get('/', (req, res) => {
-  res.send(getLandingPageHTML(req))
-})
 
 // Basic status route
 app.get('/health', (req, res) => {
