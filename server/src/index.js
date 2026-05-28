@@ -16,6 +16,7 @@ const rateLimit = require('express-rate-limit')
 require('./workers/petitionWorker')
 
 const app = express()
+app.set('trust proxy', 1) // Trust Render's proxy load balancer
 const server = http.createServer(app)
 
 // Connect to MongoDB

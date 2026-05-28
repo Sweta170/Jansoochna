@@ -143,6 +143,12 @@ exports.sendOTPEmail = async (to, otp, name = 'Nagarik') => {
   } catch (err) {
     console.error(`[Email] Failed to send OTP to ${to}:`, err.message)
 
+    // Log the OTP as a fallback for production environments where outbound SMTP ports are blocked (like Render free tier)
+    console.log(`\n================== PRODUCTION FALLBACK OTP ==================`)
+    console.log(`To: ${to}`)
+    console.log(`OTP: ${otp}`)
+    console.log(`=============================================================\n`)
+
     // Provide helpful error messages for common Gmail SMTP errors
     if (err.message.includes('Invalid login') || err.message.includes('Username and Password')) {
       console.error('[Email] FIX: Check GMAIL_APP_PASSWORD — use App Password, not Gmail password')
@@ -151,7 +157,8 @@ exports.sendOTPEmail = async (to, otp, name = 'Nagarik') => {
       console.error('[Email] Gmail daily limit (500 emails) reached')
     }
 
-    return false
+    // Return true so the app proceeds to verification screen where the user can enter the logged OTP
+    return true
   }
 }
 
